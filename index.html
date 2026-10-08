@@ -1,0 +1,1664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#f6f6f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<title>Neuro Active Tasks</title>
+<style>
+/* layout: full-screen views (menu, task, result) separated by hairlines; system type, one warm accent */
+:root {
+  --bg: #f6f6f3; --ink: #161616; --muted: #76766f; --line: #d9d9d2; --soft: #ebebe5;
+  --accent: #c2410c; --guide: #e3e3dc;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #121211; --ink: #e9e9e4; --muted: #8b8b84; --line: #2e2e2b; --soft: #1d1d1b; --accent: #f97316; --guide: #2a2a27; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #121211; --ink: #e9e9e4; --muted: #8b8b84; --line: #2e2e2b; --soft: #1d1d1b; --accent: #f97316; --guide: #2a2a27; color-scheme: dark; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--ink); overscroll-behavior: none; }
+body {
+  font: 15px/1.45 var(--sans); overflow: hidden; -webkit-text-size-adjust: 100%;
+  font-variant-numeric: tabular-nums;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+/* iOS refuses to type into inputs that inherit user-select:none */
+input, pre { user-select: text; -webkit-user-select: text; -webkit-touch-callout: default; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: inherit; touch-action: manipulation; }
+button:disabled { opacity: .35; cursor: default; }
+button:focus-visible { outline: 1px dotted var(--muted); outline-offset: 3px; }
+
+.view { position: fixed; inset: 0; display: none; flex-direction: column;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.view.on { display: flex; }
+.scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y; overscroll-behavior: contain; }
+.wrap { width: 100%; max-width: 560px; margin: 0 auto; padding: 0 16px; }
+.label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.link { padding: 6px 0 2px; border-bottom: 1px solid currentColor; line-height: 1.2; }
+.fine { font-size: 12px; color: var(--muted); }
+
+/* menu */
+.top { padding: 30px 0 20px; }
+.top h1 { font-size: 28px; font-weight: 600; letter-spacing: -.01em; margin-top: 6px; }
+.top p { color: var(--muted); margin-top: 2px; }
+.tasks { list-style: none; border-top: 1px solid var(--line); }
+.task { display: grid; grid-template-columns: 2.4em 1fr auto; align-items: baseline; gap: 4px; width: 100%;
+  padding: 15px 0; border-bottom: 1px solid var(--line); }
+.task:active { background: var(--soft); }
+.task .num, .task .runs { color: var(--muted); font-size: 13px; }
+.task .name { font-size: 17px; }
+.task small { display: block; font-size: 13px; color: var(--muted); }
+.foot { padding: 20px 0 30px; display: flex; flex-direction: column; gap: 16px; }
+.links { display: flex; gap: 22px; align-items: baseline; }
+
+/* game chrome */
+.bar { flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px;
+  height: 46px; padding: 0 16px; border-bottom: 1px solid var(--line); }
+.bar .link { border: 0; color: var(--muted); justify-self: start; padding: 12px 0; }
+.bar .t { font-size: 14px; white-space: nowrap; }
+.bar .s { justify-self: end; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.arena { position: relative; flex: 1; min-height: 0; overflow: hidden; touch-action: none; overscroll-behavior: none; }
+.hint { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font-size: 13px; color: var(--muted); pointer-events: none; }
+
+.intro { position: absolute; inset: 0; background: var(--bg); }
+.intro .wrap { padding-top: 28px; padding-bottom: 32px; }
+.intro h2 { font-size: 24px; font-weight: 600; margin: 6px 0 14px; }
+.intro p { margin-bottom: 10px; max-width: 34em; }
+.intro .measures { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.starts { display: flex; flex-wrap: wrap; gap: 30px; margin-top: 28px; }
+.go { font-size: 18px; padding: 8px 0 3px; border-bottom: 1.5px solid var(--ink); }
+
+/* typing */
+.typing { position: absolute; inset: 0; padding: 22px 16px; max-width: 560px; margin: 0 auto; touch-action: manipulation; }
+.sentence { font-size: 21px; line-height: 1.55; margin: 8px 0 18px; white-space: pre-wrap; }
+.sentence span { color: var(--muted); }
+.sentence .ok { color: var(--ink); }
+.sentence .bad { color: var(--accent); text-decoration: underline; }
+.sentence .cur { box-shadow: inset 0 -2px var(--ink); }
+#ty-in { width: 100%; font: 20px var(--sans); color: var(--ink); background: transparent; border: 0; border-radius: 0;
+  border-bottom: 1px solid var(--ink); padding: 10px 0; outline: none; }
+.typing-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: 14px; font-size: 13px; color: var(--muted); }
+
+/* two-pad tap */
+.clock { position: absolute; top: 26px; left: 0; right: 0; text-align: center; }
+.clock b { display: block; font-size: 60px; font-weight: 300; letter-spacing: -.02em; line-height: 1; margin-bottom: 8px; }
+.pad { --d: min(40vw, 34vh, 220px); position: absolute; bottom: 15%; width: var(--d); height: var(--d); border-radius: 50%;
+  border: 1px solid var(--ink); display: grid; place-items: center; font-size: 13px; color: var(--muted); }
+.pad.l { left: max(5vw, 14px); }
+.pad.r { right: max(5vw, 14px); }
+.pad.down { background: var(--ink); color: var(--bg); }
+
+/* whack-a-dot */
+.dot { position: absolute; left: 0; top: 0; border-radius: 50%; background: var(--ink); will-change: transform; }
+.dot[hidden] { display: none; }
+
+/* trail making */
+.trail-svg { position: absolute; inset: 0; }
+.trail-svg line { stroke: var(--ink); stroke-width: 1.5; }
+.node { position: absolute; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
+  border: 1px solid var(--ink); background: var(--bg); display: grid; place-items: center; font-size: 18px; font-weight: 500; }
+.node.done { background: var(--ink); color: var(--bg); }
+.node.err { border-color: var(--accent); color: var(--accent); background: var(--soft); }
+
+/* study: landing, consent, questions, submission */
+.study { padding-top: 30px; padding-bottom: 44px; }
+.study h1 { font-size: 28px; font-weight: 600; letter-spacing: -.01em; line-height: 1.2; margin: 6px 0 12px; text-wrap: balance; }
+.study p { margin-bottom: 10px; max-width: 34em; }
+.study .muted { color: var(--muted); }
+.study .sect { border-top: 1px solid var(--line); padding: 13px 0 4px; }
+.study .sect .label { margin-bottom: 5px; }
+.q { border: 0; border-top: 1px solid var(--line); padding: 16px 0 18px; margin: 0; min-width: 0; }
+.q:last-of-type { border-bottom: 1px solid var(--line); }
+.q legend { float: left; width: 100%; margin-bottom: 4px; padding: 0; }
+.q-hint { clear: both; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.opts { clear: both; display: flex; flex-wrap: wrap; gap: 4px 20px; padding-top: 4px; }
+.opt { position: relative; }
+.opt input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.opt span { display: inline-block; padding: 7px 0 3px; color: var(--muted); border-bottom: 1.5px solid transparent; cursor: pointer; }
+.opt input:checked + span { color: var(--ink); border-bottom-color: var(--ink); }
+.opt input:focus-visible + span { outline: 1px dotted var(--muted); outline-offset: 3px; }
+.agree { display: flex; gap: 12px; align-items: flex-start; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); cursor: pointer; }
+.agree input { flex: none; width: 20px; height: 20px; margin-top: 1px; accent-color: var(--ink); }
+.study .starts { align-items: baseline; }
+.go:disabled { opacity: .3; }
+.step-note { font-weight: 500; }
+.pcode { font: 600 32px/1 var(--mono); letter-spacing: .08em; margin: 6px 0 18px; user-select: text; -webkit-user-select: text; }
+
+/* results */
+.res { flex: 1; min-height: 0; }
+.res .wrap { padding-top: 24px; padding-bottom: 40px; }
+.res h2 { font-size: 24px; font-weight: 600; margin: 4px 0 16px; }
+.kv { border-top: 1px solid var(--line); margin-bottom: 18px; }
+.kv div { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.kv dt { color: var(--muted); }
+.kv dd { text-align: right; }
+.actions { display: flex; flex-wrap: wrap; gap: 22px; margin: 4px 0 28px; }
+pre.json { font: 12px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0 14px;
+  padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+details summary { list-style: none; cursor: pointer; padding: 8px 0; font-size: 13px; color: var(--muted); }
+details summary::-webkit-details-marker { display: none; }
+details summary::before { content: "+ "; }
+details[open] summary::before { content: "\2212 "; }
+</style>
+</head>
+<body>
+
+<section id="study" class="view scroll">
+  <div class="wrap study" id="study-body"></div>
+</section>
+
+<main id="menu" class="view scroll">
+  <div class="wrap">
+    <header class="top">
+      <div class="label">digital biomarkers · mvp</div>
+      <h1>active tasks</h1>
+      <p>five short tasks, about three minutes in total.</p>
+    </header>
+    <ol class="tasks" id="tasks"></ol>
+    <footer class="foot">
+      <div class="links">
+        <button class="link" id="export-all" type="button">export all</button>
+        <button class="link" id="clear-all" type="button">clear</button>
+        <button class="link" id="to-study" type="button">study flow</button>
+      </div>
+      <p class="fine" id="store-note"></p>
+      <p class="fine">research prototype, not a diagnostic device. results stay on this device unless you export them.</p>
+    </footer>
+  </div>
+</main>
+
+<section id="game" class="view">
+  <header class="bar">
+    <button class="link" id="quit" type="button">← tasks</button>
+    <div class="t" id="g-title"></div>
+    <div class="s" id="g-status"></div>
+  </header>
+  <div class="arena" id="arena"></div>
+</section>
+
+<section id="results" class="view">
+  <header class="bar">
+    <button class="link" id="r-back" type="button">← tasks</button>
+    <div class="t">result</div>
+    <div class="s" id="r-when"></div>
+  </header>
+  <div class="res scroll">
+    <div class="wrap">
+      <div class="label" id="r-task"></div>
+      <h2 id="r-title"></h2>
+      <dl class="kv" id="r-kv"></dl>
+      <div class="actions">
+        <button class="link" id="r-again" type="button">again</button>
+        <button class="link" id="r-copy" type="button">copy json</button>
+        <button class="link" id="r-dl" type="button">download</button>
+      </div>
+      <div class="label">metrics · json</div>
+      <pre class="json" id="r-json"></pre>
+      <details id="r-raw-d">
+        <summary>raw samples <span id="r-raw-n"></span></summary>
+        <pre class="json" id="r-raw"></pre>
+      </details>
+      <p class="fine" id="r-note"></p>
+    </div>
+  </div>
+</section>
+
+<script>
+(() => {
+'use strict';
+
+/* ============================================================
+   utilities
+   ============================================================ */
+const $ = (s, root = document) => root.querySelector(s);
+const TAU = Math.PI * 2;
+const HAS_TOUCH = 'ontouchstart' in window || (navigator.maxTouchPoints || 0) > 0;
+const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+const rnd = (x, d = 1) => (x == null || !Number.isFinite(x)) ? null : Math.round(x * 10 ** d) / 10 ** d;
+// event.timeStamp is high-resolution and shares performance.now()'s origin; fall back if a browser reports epoch ms
+const evT = e => { const t = e && e.timeStamp; return t > 0 && t < 1e11 ? t : performance.now(); };
+
+const sum = a => { let s = 0; for (const x of a) s += x; return s; };
+const mean = a => a.length ? sum(a) / a.length : null;
+const sd = a => {
+  if (a.length < 2) return null;
+  const m = mean(a); let s = 0;
+  for (const x of a) s += (x - m) ** 2;
+  return Math.sqrt(s / (a.length - 1));
+};
+const median = a => {
+  if (!a.length) return null;
+  const b = Array.from(a).sort((x, y) => x - y), h = b.length >> 1;
+  return b.length % 2 ? b[h] : (b[h - 1] + b[h]) / 2;
+};
+const rms = a => a.length ? Math.sqrt(sum(Array.from(a, x => x * x)) / a.length) : null;
+const cvOf = a => { const m = mean(a), s = sd(a); return m && s != null ? rnd(s / m, 3) : null; };
+const diffs = a => Array.from({ length: Math.max(0, a.length - 1) }, (_, i) => a[i + 1] - a[i]);
+
+function slope(xs, ys) {
+  const n = xs.length;
+  if (n < 3) return null;
+  const mx = mean(xs), my = mean(ys);
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) { num += (xs[i] - mx) * (ys[i] - my); den += (xs[i] - mx) ** 2; }
+  return den ? num / den : null;
+}
+
+// descriptive stats block; cv is omitted for signed quantities where it is meaningless
+function desc(a, d = 1, withCv = true) {
+  a = Array.from(a);
+  const out = { n: a.length, mean: null, median: null, sd: null };
+  if (withCv) out.cv = null;
+  out.min = null;
+  out.max = null;
+  if (!a.length) return out;
+  let lo = Infinity, hi = -Infinity;
+  for (const x of a) { if (x < lo) lo = x; if (x > hi) hi = x; }
+  Object.assign(out, { mean: rnd(mean(a), d), median: rnd(median(a), d), sd: rnd(sd(a), d), min: rnd(lo, d), max: rnd(hi, d) });
+  if (withCv) out.cv = cvOf(a);
+  return out;
+}
+
+function levenshtein(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++)
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+// linear resample of irregular samples onto a uniform grid
+function resample(T, cols, fs) {
+  const n = Math.floor((T[T.length - 1] - T[0]) / 1000 * fs) + 1;
+  const out = cols.map(() => new Float64Array(n));
+  let j = 0;
+  for (let k = 0; k < n; k++) {
+    const t = T[0] + k * 1000 / fs;
+    while (j < T.length - 2 && T[j + 1] < t) j++;
+    const span = T[j + 1] - T[j], w = span > 0 ? clamp((t - T[j]) / span, 0, 1) : 0;
+    for (let c = 0; c < cols.length; c++) out[c][k] = cols[c][j] + (cols[c][j + 1] - cols[c][j]) * w;
+  }
+  return out;
+}
+
+// signal minus its centred moving average (crude high-pass)
+function highpass(u, win) {
+  const n = u.length, h = Math.max(1, win >> 1), P = new Float64Array(n + 1), out = new Float64Array(n);
+  for (let i = 0; i < n; i++) P[i + 1] = P[i] + u[i];
+  for (let i = 0; i < n; i++) {
+    const a = Math.max(0, i - h), b = Math.min(n, i + h + 1);
+    out[i] = u[i] - (P[b] - P[a]) / (b - a);
+  }
+  return out;
+}
+
+// Hann-windowed DFT power at fixed frequencies
+function spectrum(x, fs, f0 = 1, f1 = 20, df = 0.25) {
+  const n = x.length, F = [], P = [];
+  for (let f = f0; f <= f1 + 1e-9; f += df) {
+    const w0 = TAU * f / fs; let re = 0, im = 0;
+    for (let i = 0; i < n; i++) {
+      const v = x[i] * (0.5 - 0.5 * Math.cos(TAU * i / (n - 1)));
+      re += v * Math.cos(w0 * i); im -= v * Math.sin(w0 * i);
+    }
+    F.push(f); P.push((re * re + im * im) / n);
+  }
+  return { F, P };
+}
+
+// pretty JSON: objects indented, arrays of primitives / tuples kept on one line
+function fmtJSON(v, ind = '', inArr = false) {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  const pad = ind + '  ';
+  const prim = x => x === null || typeof x !== 'object';
+  if (Array.isArray(v)) {
+    if (!v.length) return '[]';
+    if (v.every(x => prim(x) || (Array.isArray(x) && x.every(prim))))
+      return '[' + v.map(x => JSON.stringify(x)).join(', ') + ']';
+    return '[\n' + v.map(x => pad + fmtJSON(x, pad, true)).join(',\n') + '\n' + ind + ']';
+  }
+  const keys = Object.keys(v).filter(k => v[k] !== undefined);
+  if (!keys.length) return '{}';
+  const inline = '{ ' + keys.map(k => JSON.stringify(k) + ': ' + JSON.stringify(v[k])).join(', ') + ' }';
+  if (keys.every(k => prim(v[k])) && (inArr || inline.length <= 76)) return inline;
+  return '{\n' + keys.map(k => pad + JSON.stringify(k) + ': ' + fmtJSON(v[k], pad)).join(',\n') + '\n' + ind + '}';
+}
+
+const uid = () => {
+  try { if (crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+  return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+};
+
+const ms = v => v == null ? '—' : `${Math.round(v)} ms`;
+const secs = v => v == null ? '—' : `${(v / 1000).toFixed(1)} s`;
+const pct = v => v == null ? '—' : `${Math.round(v * 100)}%`;
+const px = v => v == null ? '—' : `${v.toFixed(1)} px`;
+const signed = (v, d = 1) => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(d);
+
+/* ============================================================
+   runtime: per-task context that owns listeners/timers so quitting is clean
+   ============================================================ */
+function makeCtx() {
+  const offs = [], timers = new Set(), frames = new Set();
+  const ctx = {
+    alive: true,
+    flags: { hidden: false, resized: false },
+    on(el, type, fn, opts) { el.addEventListener(type, fn, opts); offs.push(() => el.removeEventListener(type, fn, opts)); },
+    after(ms, fn) { const id = setTimeout(() => { timers.delete(id); if (ctx.alive) fn(); }, Math.max(0, ms)); timers.add(id); return id; },
+    cancel(id) { clearTimeout(id); timers.delete(id); },
+    frame(fn) { const id = requestAnimationFrame(t => { frames.delete(id); if (ctx.alive) fn(t); }); frames.add(id); return id; },
+    dispose() {
+      ctx.alive = false;
+      offs.splice(0).forEach(f => f());
+      timers.forEach(clearTimeout); timers.clear();
+      frames.forEach(cancelAnimationFrame); frames.clear();
+    },
+  };
+  ctx.on(document, 'visibilitychange', () => { if (document.hidden) ctx.flags.hidden = true; });
+  ctx.on(window, 'resize', () => { ctx.flags.resized = true; });
+  return ctx;
+}
+
+// Touch-first input. Handlers get {id, x, y} in element-local CSS px plus the event timestamp.
+// Mouse is wired up only on devices with no touch support, so the tasks can be tried on a laptop.
+function bindPointer(ctx, el, h) {
+  let box = el.getBoundingClientRect();
+  const pt = (id, cx, cy) => ({ id, x: cx - box.left, y: cy - box.top });
+  const each = (e, fn) => {
+    if (!fn) return;
+    const t = evT(e);
+    for (const c of e.changedTouches) { if (!ctx.alive) return; fn(pt(c.identifier, c.clientX, c.clientY), t); }
+  };
+  const o = { passive: false };
+  ctx.on(el, 'touchstart', e => { e.preventDefault(); box = el.getBoundingClientRect(); each(e, h.start); }, o);
+  ctx.on(el, 'touchmove', e => { e.preventDefault(); each(e, h.move); }, o);
+  ctx.on(el, 'touchend', e => { e.preventDefault(); each(e, h.end); }, o);
+  ctx.on(el, 'touchcancel', e => each(e, h.end), o);
+  ctx.on(el, 'contextmenu', e => e.preventDefault());
+  if (!HAS_TOUCH) {
+    let down = false;
+    ctx.on(el, 'mousedown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault(); down = true; box = el.getBoundingClientRect();
+      h.start && h.start(pt('mouse', e.clientX, e.clientY), evT(e));
+    });
+    ctx.on(window, 'mousemove', e => { if (down && h.move) h.move(pt('mouse', e.clientX, e.clientY), evT(e)); });
+    ctx.on(window, 'mouseup', e => {
+      if (!down) return;
+      down = false; h.end && h.end(pt('mouse', e.clientX, e.clientY), evT(e));
+    });
+  }
+}
+
+const arena = $('#arena');
+const setStatus = s => { $('#g-status').textContent = s; };
+
+/* ============================================================
+   1 · typing sprint
+   ============================================================ */
+const SENTENCE = 'The quick brown fox jumps over the lazy dog';
+const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Enter', 'Tab']);
+
+const PRACTICE_SENTENCE = 'the lazy dog';
+
+function runTyping(ctx) {
+  const TARGET = ctx.practice ? PRACTICE_SENTENCE : SENTENCE;
+  const norm = s => s.toLowerCase().replace(/\s+/g, ' ').trim();
+  arena.innerHTML = `
+    <div class="typing">
+      <div class="label">type this</div>
+      <p class="sentence" id="ty-s"></p>
+      <input id="ty-in" type="text" autocomplete="off" autocorrect="off" autocapitalize="none"
+             spellcheck="false" enterkeyhint="done" aria-label="type the sentence">
+      <div class="typing-foot"><span id="ty-n"></span><button class="link" id="ty-done" type="button">done</button></div>
+    </div>`;
+  const inp = $('#ty-in'), sEl = $('#ty-s'), nEl = $('#ty-n');
+  const log = [], tOpen = performance.now();
+  let blocked = 0, compositions = 0, keys = 0, finished = false;
+
+  const render = () => {
+    const v = inp.value;
+    sEl.innerHTML = [...TARGET].map((ch, i) => {
+      const c = i < v.length ? (v[i].toLowerCase() === ch.toLowerCase() ? 'ok' : 'bad') : i === v.length ? 'cur' : '';
+      return `<span class="${c}">${ch}</span>`;
+    }).join('');
+    nEl.textContent = `${v.length} / ${TARGET.length}`;
+  };
+  const k = e => ({ key: e.key, code: e.code || '', kc: e.keyCode || 0 });
+
+  ctx.on(inp, 'keydown', e => {
+    log.push({ ev: 'down', t: evT(e), ...k(e), rep: !!e.repeat });
+    if (e.key === 'Enter') { e.preventDefault(); finish(); return; }
+    if (!e.repeat) setStatus(`${++keys} keys`);
+  });
+  ctx.on(inp, 'keyup', e => log.push({ ev: 'up', t: evT(e), ...k(e) }));
+  ctx.on(inp, 'beforeinput', e => {
+    if (/^insertFrom(Paste|Drop)/.test(e.inputType)) { e.preventDefault(); blocked++; return; }
+    log.push({ ev: 'in', t: evT(e), type: e.inputType, data: e.data });
+  });
+  ctx.on(inp, 'paste', e => { e.preventDefault(); blocked++; });
+  ctx.on(inp, 'compositionstart', () => compositions++);
+  ctx.on(inp, 'input', () => { render(); if (norm(inp.value) === norm(TARGET)) ctx.after(200, finish); });
+  ctx.on($('#ty-done'), 'click', () => finish());
+
+  render();
+  setStatus('ready');
+  inp.focus();
+
+  function finish() {
+    if (finished) return;
+    if (!log.some(e => e.ev === 'down' && e.key !== 'Enter')) { setStatus('type first'); inp.focus(); return; }
+    finished = true;
+    inp.blur();
+    ctx.done(analyzeTyping(log, inp.value, { tOpen, blocked, compositions, target: TARGET }));
+  }
+}
+
+function analyzeTyping(log, typed, x) {
+  // Soft keyboards (esp. Android/Gboard) often report key "Unidentified" / keyCode 229,
+  // so identity falls back to the beforeinput event that follows each keydown.
+  const known = e => e.key && e.key !== 'Unidentified' && e.kc !== 229;
+  const ks = [], open = [];
+  let downs = 0, unidentified = 0, repeats = 0, orphanInputs = 0, orphanDeletes = 0;
+
+  for (const e of log) {
+    if (e.ev === 'down') {
+      if (MODIFIERS.has(e.key)) continue;
+      if (e.rep) { repeats++; continue; }
+      downs++;
+      if (!known(e)) unidentified++;
+      const s = { d: e.t, u: null, id: known(e) ? (e.code || e.key) : null, key: known(e) ? e.key : null, inType: null, data: null };
+      ks.push(s); open.push(s);
+    } else if (e.ev === 'up') {
+      if (MODIFIERS.has(e.key)) continue;
+      for (let i = open.length - 1; i >= 0; i--) if (e.t - open[i].d > 2000) open.splice(i, 1);   // lost keyups
+      const id = known(e) ? (e.code || e.key) : null;
+      let i = id ? open.findIndex(s => s.id === id) : -1;
+      if (i < 0) i = open.findIndex(s => s.id === null || id === null);
+      if (i >= 0) { open[i].u = e.t; open.splice(i, 1); }
+    } else {
+      const s = ks[ks.length - 1];
+      if (s && !s.inType && e.t >= s.d) { s.inType = e.type; s.data = e.data; }
+      else { orphanInputs++; if ((e.type || '').startsWith('delete')) orphanDeletes++; }
+    }
+  }
+
+  const isBack = s => s.key === 'Backspace' || (s.inType || '').startsWith('delete');
+  const char = s => isBack(s) ? '⌫' : s.key && s.key.length === 1 ? s.key : s.data ? s.data.slice(-1) : (s.key || '?');
+  const t0 = ks.length ? ks[0].d : 0;
+
+  const holds = ks.filter(s => !isBack(s) && s.u != null).map(s => s.u - s.d);
+  const flights = [], iki = [];
+  for (let i = 1; i < ks.length; i++) {
+    iki.push(ks[i].d - ks[i - 1].d);
+    if (ks[i - 1].u != null) flights.push(ks[i].d - ks[i - 1].u);
+  }
+  const ikiMed = median(iki);
+  const hesThr = Math.max(500, (ikiMed || 0) * 2.5);
+  const hes = iki.filter(v => v > hesThr);
+
+  const last = ks.length ? Math.max(...ks.map(s => s.u ?? s.d)) : 0;
+  const duration = last - t0;
+  const done = typed.toLowerCase().replace(/\s+/g, ' ').trim();
+  const target = x.target.toLowerCase();
+  const errs = levenshtein(done, target);
+  const backspaces = ks.filter(isBack).length + orphanDeletes;
+  const paired = ks.filter(s => s.u != null).length;
+  const holdMed = median(holds);
+
+  return {
+    settings: { sentence: x.target, caseSensitive: false },
+    metrics: {
+      completed: errs === 0,
+      typed,
+      accuracy: rnd(Math.max(0, 1 - errs / target.length), 3),
+      uncorrectedErrors: errs,
+      durationMs: rnd(duration),
+      wpm: duration > 0 ? rnd(done.length / 5 / (duration / 60000)) : null,
+      keystrokes: ks.length,
+      initiationLatencyMs: ks.length ? rnd(t0 - x.tOpen) : null,
+      holdTimeMs: desc(holds),
+      flightTimeMs: desc(flights),
+      interKeyIntervalMs: desc(iki),
+      backspaces,
+      backspaceRate: ks.length ? rnd(backspaces / ks.length, 3) : null,
+      hesitations: { thresholdMs: rnd(hesThr), count: hes.length, longestMs: hes.length ? rnd(Math.max(...hes)) : null },
+    },
+    quality: {
+      unidentifiedKeyRatio: downs ? rnd(unidentified / downs, 3) : null,
+      keyupPairedRatio: ks.length ? rnd(paired / ks.length, 3) : null,
+      // virtual keyboards often fire keydown/keyup together on release, making hold time ~0
+      holdTimesReliable: holdMed != null && holdMed >= 15 && paired / ks.length >= 0.8,
+      inputsWithoutKeydown: orphanInputs,
+      autoRepeats: repeats,
+      compositionEvents: x.compositions,
+      pasteBlocked: x.blocked,
+    },
+    raw: {
+      keystrokeColumns: ['char', 'tDownMs', 'holdMs'],
+      keystrokes: ks.map(s => [char(s), rnd(s.d - t0), s.u != null ? rnd(s.u - s.d) : null]),
+      eventColumns: ['event', 'tMs', 'key|inputType', 'keyCode|data'],
+      events: log.map(e => [e.ev, rnd(e.t - t0), e.ev === 'in' ? e.type : e.key, e.ev === 'in' ? e.data : e.kc]),
+    },
+  };
+}
+
+/* ============================================================
+   2 · two-pad speed tap
+   ============================================================ */
+function runTap(ctx, hand) {
+  const DURATION = ctx.practice ? 5000 : 10000;
+  arena.innerHTML = `
+    <div class="clock"><b id="tp-clock">${(DURATION / 1000).toFixed(1)}</b><span class="label" id="tp-n">tap either pad to begin</span></div>
+    <div class="pad l" data-pad="L">L</div>
+    <div class="pad r" data-pad="R">R</div>`;
+  const clockEl = $('#tp-clock'), nEl = $('#tp-n');
+  const ab = arena.getBoundingClientRect();
+  const pads = [...arena.querySelectorAll('.pad')].map(el => {
+    const b = el.getBoundingClientRect();
+    return { el, id: el.dataset.pad, x: b.left - ab.left + b.width / 2, y: b.top - ab.top + b.height / 2, r: b.width / 2 };
+  });
+  const hit = p => pads.find(q => Math.hypot(p.x - q.x, p.y - q.y) <= q.r * 1.12);
+  const taps = [], live = new Map();
+  let t0 = null, over = false, offPad = 0;
+  setStatus(hand === 'left' ? 'left hand' : 'right hand');
+
+  const tick = () => {
+    if (over) return;
+    clockEl.textContent = (Math.max(0, DURATION - (performance.now() - t0)) / 1000).toFixed(1);
+    ctx.frame(tick);
+  };
+  const end = () => {
+    over = true;
+    clockEl.textContent = '0.0';
+    // short grace period so the last touchend (dwell time) lands
+    ctx.after(200, () => {
+      pads.forEach(p => p.el.classList.remove('down'));
+      ctx.done(analyzeTap(taps, offPad, hand, DURATION));
+    });
+  };
+
+  bindPointer(ctx, arena, {
+    start(p, t) {
+      if (over) return;
+      const pad = hit(p);
+      if (!pad) { if (t0 != null) offPad++; return; }
+      if (t0 == null) { t0 = t; ctx.after(DURATION - (performance.now() - t0), end); tick(); }
+      if (t - t0 > DURATION) return;
+      const tap = { t: t - t0, pad: pad.id, dx: p.x - pad.x, dy: p.y - pad.y, start: t, dwell: null };
+      taps.push(tap);
+      live.set(p.id, { tap, pad });
+      pad.el.classList.add('down');
+      nEl.textContent = `${taps.length} taps`;
+    },
+    end(p, t) {
+      const l = live.get(p.id);
+      if (!l) return;
+      live.delete(p.id);
+      l.tap.dwell = t - l.tap.start;
+      l.pad.el.classList.remove('down');
+    },
+  });
+}
+
+function analyzeTap(taps, offPad, hand, D) {
+  const ts = taps.map(x => x.t);
+  const iti = diffs(ts);
+  const itiAt = ts.slice(1).map(t => t / 1000);          // interval stamped at the tap that closes it
+  let alternations = 0;
+  for (let i = 1; i < taps.length; i++) if (taps[i].pad !== taps[i - 1].pad) alternations++;
+  const first = iti.filter((_, i) => ts[i + 1] < D / 2), second = iti.filter((_, i) => ts[i + 1] >= D / 2);
+  const m1 = mean(first), m2 = mean(second);
+  const bins = Array.from({ length: D / 1000 }, (_, i) => ts.filter(t => t >= i * 1000 && t < (i + 1) * 1000).length);
+
+  return {
+    settings: { hand, durationMs: D, alternating: true },
+    metrics: {
+      taps: taps.length,
+      tapsPerSecond: rnd(taps.length / (D / 1000), 2),
+      leftPadTaps: taps.filter(x => x.pad === 'L').length,
+      rightPadTaps: taps.filter(x => x.pad === 'R').length,
+      alternationErrors: Math.max(0, taps.length - 1 - alternations),
+      offPadTaps: offPad,
+      interTapIntervalMs: desc(iti),
+      fatigue: {
+        itiSlopeMsPerS: rnd(slope(itiAt, iti), 2),         // > 0: rhythm slowing over the window
+        firstHalfMeanItiMs: rnd(m1),
+        secondHalfMeanItiMs: rnd(m2),
+        decrementPct: m1 && m2 ? rnd((m2 - m1) / m1 * 100) : null,
+        firstHalfCv: cvOf(first),
+        secondHalfCv: cvOf(second),
+        tapsPerSecondBins: bins,
+      },
+      dwellMs: desc(taps.map(x => x.dwell).filter(v => v != null)),
+      distanceFromPadCentrePx: desc(taps.map(x => Math.hypot(x.dx, x.dy))),
+    },
+    quality: { enoughTaps: taps.length >= 10 },
+    raw: {
+      tapColumns: ['tMs', 'pad', 'dxPx', 'dyPx', 'dwellMs'],
+      taps: taps.map(x => [rnd(x.t), x.pad, rnd(x.dx), rnd(x.dy), rnd(x.dwell)]),
+    },
+  };
+}
+
+/* ============================================================
+   3 · trace the spiral
+   ============================================================ */
+function spiralGeometry(W, H) {
+  const turns = 3, R = Math.min(W, H) * 0.43, thMax = turns * TAU, b = R / thMax, gap = TAU * b;
+  return { W, H, cx: W / 2, cy: H / 2, R, turns, thMax, b, gap, startTol: Math.max(26, gap * 0.55) };
+}
+
+function runSpiral(ctx) {
+  const W = arena.clientWidth, H = arena.clientHeight, dpr = window.devicePixelRatio || 1;
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  cv.style.cssText = `display:block;width:${W}px;height:${H}px`;
+  const hint = document.createElement('div');
+  hint.className = 'hint';
+  arena.append(cv, hint);
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const css = getComputedStyle(document.documentElement), col = n => css.getPropertyValue(n).trim();
+  const geo = spiralGeometry(W, H);
+  let pts = null, touchId = null, restarts = 0;
+
+  const drawGuide = () => {
+    g.clearRect(0, 0, W, H);
+    g.lineCap = g.lineJoin = 'round';
+    const path = () => {
+      g.beginPath();
+      const steps = Math.ceil(geo.thMax / 0.02);
+      for (let s = 0; s <= steps; s++) {
+        const th = s / steps * geo.thMax, r = geo.b * th;
+        const x = geo.cx + r * Math.cos(th), y = geo.cy + r * Math.sin(th);
+        s ? g.lineTo(x, y) : g.moveTo(x, y);
+      }
+    };
+    g.strokeStyle = col('--guide'); g.lineWidth = 16; path(); g.stroke();
+    g.strokeStyle = col('--muted'); g.lineWidth = 1; path(); g.stroke();
+    g.fillStyle = col('--accent'); g.beginPath(); g.arc(geo.cx, geo.cy, 7, 0, TAU); g.fill();
+    g.strokeStyle = col('--ink'); g.lineWidth = 1.5; g.beginPath();
+    g.arc(geo.cx + geo.R * Math.cos(geo.thMax), geo.cy + geo.R * Math.sin(geo.thMax), 9, 0, TAU); g.stroke();
+  };
+  drawGuide();
+  hint.textContent = 'start on the centre dot';
+  setStatus('');
+
+  bindPointer(ctx, cv, {
+    start(p, t) {
+      if (touchId !== null) return;                        // ignore extra fingers
+      if (Math.hypot(p.x - geo.cx, p.y - geo.cy) > geo.startTol) { hint.textContent = 'start on the centre dot'; return; }
+      touchId = p.id;
+      pts = [[p.x, p.y, t]];
+      hint.textContent = '';
+      setStatus('tracing');
+      g.strokeStyle = col('--ink'); g.lineWidth = 2.5;
+    },
+    move(p, t) {
+      if (p.id !== touchId) return;
+      const q = pts[pts.length - 1];
+      if (t <= q[2]) { q[0] = p.x; q[1] = p.y; return; }     // same timestamp: keep the newest position
+      pts.push([p.x, p.y, t]);
+      g.beginPath(); g.moveTo(q[0], q[1]); g.lineTo(p.x, p.y); g.stroke();
+    },
+    end(p) {
+      if (p.id !== touchId) return;
+      touchId = null;
+      const out = analyzeSpiral(pts, geo, restarts);
+      if (!out) {
+        restarts++;
+        drawGuide();
+        hint.textContent = 'lifted too early — start again from the centre';
+        setStatus('');
+        return;
+      }
+      ctx.done(out);
+    },
+  });
+}
+
+// unwrap the polar angle of each sample so θ keeps growing across turns
+function unwrapSpiral(pts, geo) {
+  const th = new Array(pts.length).fill(NaN);
+  const initR = Math.max(10, geo.b * 1.2);                 // angle is meaningless right at the centre
+  const i0 = pts.findIndex(p => Math.hypot(p[0] - geo.cx, p[1] - geo.cy) >= initR);
+  if (i0 < 0) return th;
+  let prev = 0;
+  for (let i = i0; i < pts.length; i++) {
+    const x = pts[i][0] - geo.cx, y = pts[i][1] - geo.cy, r = Math.hypot(x, y), phi = Math.atan2(y, x);
+    if (i === i0) {
+      const base = (phi + TAU) % TAU;
+      let best = Infinity;
+      for (let k = -1; k <= geo.turns; k++) {
+        const c = base + TAU * k, e = Math.abs(r - geo.b * clamp(c, 0, geo.thMax));
+        if (e < best) { best = e; th[i] = c; }
+      }
+    } else if (r < 3) {
+      th[i] = th[i - 1];
+      continue;
+    } else {
+      let d = phi - prev;
+      d -= TAU * Math.round(d / TAU);
+      th[i] = th[i - 1] + d;
+    }
+    prev = phi;
+  }
+  return th;
+}
+
+function analyzeSpiral(pts, geo, restarts) {
+  if (!pts || pts.length < 20) return null;
+  const th = unwrapSpiral(pts, geo);
+  const reached = Math.max(...th.filter(Number.isFinite), 0);
+  const coverage = clamp(reached / geo.thMax, 0, 1);
+  if (coverage < 0.25) return null;
+
+  // analyse from a quarter turn in (finger covers the centre) to the end of the curve
+  const lo = th.findIndex(v => v >= Math.PI / 2);
+  let hi = th.length - 1;
+  while (hi > lo && !(th[hi] <= geo.thMax)) hi--;
+  if (lo < 0 || hi - lo < 20) return null;
+
+  const X = [], Y = [], T = [], E = [], TH = [];
+  for (let i = lo; i <= hi; i++) {
+    const x = pts[i][0] - geo.cx, y = pts[i][1] - geo.cy;
+    X.push(x); Y.push(y); T.push(pts[i][2]); TH.push(th[i]);
+    E.push(Math.hypot(x, y) - geo.b * clamp(th[i], 0, geo.thMax));   // signed radial error, + = outside
+  }
+
+  // perpendicular distance to the ideal curve via dense sampling (~1 px spacing)
+  const sx = [], sy = [];
+  for (let a = 0; a <= geo.thMax; a += 0.004) { sx.push(geo.b * a * Math.cos(a)); sy.push(geo.b * a * Math.sin(a)); }
+  const dist = X.map((x, k) => {
+    let m = Infinity;
+    for (let s = 0; s < sx.length; s++) { const dx = x - sx[s], dy = Y[k] - sy[s], q = dx * dx + dy * dy; if (q < m) m = q; }
+    return Math.sqrt(m);
+  });
+
+  // kinematics on a uniform 60 Hz grid
+  const FS = 60;
+  const [ux, uy, ue, uth] = resample(T, [X, Y, E, TH], FS);
+  const speed = Array.from({ length: ux.length - 1 }, (_, i) => Math.hypot(ux[i + 1] - ux[i], uy[i + 1] - uy[i]) * FS);
+  const accel = diffs(speed).map(v => v * FS);
+  const angVel = diffs(Array.from(uth)).map(v => v * FS);
+  let pauses = 0, pauseMs = 0, run = 0;
+  for (const v of [...speed, Infinity]) {
+    if (v < 20) run++;
+    else { if (run >= Math.round(0.15 * FS)) { pauses++; pauseMs += run * 1000 / FS; } run = 0; }
+  }
+
+  // jitter: radial error minus its 250 ms moving average; tremor: spectrum of error minus 1 s trend
+  const jitter = highpass(ue, Math.round(0.25 * FS));
+  let tremor = { dominantHz: null, bandPowerRatio4to12Hz: null, analysedSeconds: rnd(ue.length / FS, 2) };
+  if (ue.length >= 2 * FS) {
+    const { F, P } = spectrum(highpass(ue, FS), FS);
+    let best = -1;
+    F.forEach((f, i) => { if (f >= 3 && f <= 15 && (best < 0 || P[i] > P[best])) best = i; });
+    const total = sum(P), band = sum(P.filter((_, i) => F[i] >= 4 && F[i] <= 12));
+    tremor = { dominantHz: rnd(F[best], 2), bandPowerRatio4to12Hz: total ? rnd(band / total, 3) : null, analysedSeconds: rnd(ue.length / FS, 2) };
+  }
+
+  const t0 = pts[0][2], dur = pts[pts.length - 1][2] - t0;
+  const rate = (pts.length - 1) / (dur / 1000);
+  return {
+    settings: {
+      turns: geo.turns, maxRadiusPx: rnd(geo.R), ringSpacingPx: rnd(geo.gap), bPxPerRad: rnd(geo.b, 3),
+      direction: 'clockwise from centre', analysisWindow: 'quarter turn in → end of curve', resampleHz: FS,
+    },
+    metrics: {
+      completed: coverage >= 0.9,
+      coverage: rnd(coverage, 3),
+      durationMs: rnd(dur),
+      restarts,
+      distanceToCurvePx: desc(dist),
+      normalisedOffset: rnd(mean(dist) / geo.gap, 3),    // mean distance as a fraction of ring spacing
+      radialErrorPx: { ...desc(E, 1, false), meanAbs: rnd(mean(E.map(Math.abs))), rms: rnd(rms(E)) },
+      speedPxPerS: desc(speed),
+      accelRmsPxPerS2: rnd(rms(accel), 0),
+      angularVelocityRadPerS: desc(angVel, 2),
+      pauses: { count: pauses, totalMs: rnd(pauseMs, 0), speedBelowPxPerS: 20, minDurationMs: 150 },
+      jitter: { rmsPx: rnd(rms(jitter), 2), windowMs: 250 },
+      tremor,
+    },
+    quality: {
+      touchSampleRateHz: rnd(rate),
+      lowSampleRate: rate < 40,
+      points: pts.length,
+      analysedPoints: hi - lo + 1,
+    },
+    raw: {
+      origin: 'spiral centre; t from first touch',
+      pointColumns: ['xPx', 'yPx', 'tMs'],
+      points: pts.map(p => [rnd(p[0] - geo.cx), rnd(p[1] - geo.cy), rnd(p[2] - t0)]),
+    },
+  };
+}
+
+/* ============================================================
+   4 · whack-a-dot
+   ============================================================ */
+function runDots(ctx) {
+  const N = ctx.practice ? 6 : 20, R = 26, TOL = 14, TIMEOUT = 1500, ISI = [250, 600], M = 10;
+  const W = arena.clientWidth, H = arena.clientHeight;
+  arena.innerHTML = '<div class="dot" hidden></div>';
+  const dot = arena.firstElementChild;
+  dot.style.width = dot.style.height = `${2 * R}px`;
+  const trials = [];
+  let cur = null, k = 0, prev = null, stray = 0, over = false;
+
+  const place = () => {
+    let p;
+    for (let a = 0; a < 40; a++) {
+      p = { x: M + R + Math.random() * (W - 2 * (M + R)), y: M + R + Math.random() * (H - 2 * (M + R)) };
+      if (!prev || Math.hypot(p.x - prev.x, p.y - prev.y) >= Math.min(W, H) * 0.3) break;
+    }
+    return p;
+  };
+  const next = () => {
+    if (k >= N) { over = true; return ctx.done(analyzeDots(trials, { N, R, TOL, TIMEOUT, ISI, W, H, stray })); }
+    ctx.after(ISI[0] + Math.random() * (ISI[1] - ISI[0]), () => {
+      const pos = place();
+      ctx.frame(t1 => {
+        dot.style.transform = `translate(${pos.x - R}px, ${pos.y - R}px)`;
+        dot.hidden = false;
+        const trial = { i: k++, x: pos.x, y: pos.y, onset: t1, misses: [], hit: null, timer: null,
+                        fromPrevPx: prev ? Math.hypot(pos.x - prev.x, pos.y - prev.y) : null };
+        cur = trial;
+        setStatus(`${k} / ${N}`);
+        // onset = start of the frame after the dot was committed, i.e. roughly when it reached the screen
+        ctx.frame(t2 => {
+          if (cur !== trial) return;
+          trial.onset = t2;
+          trial.timer = ctx.after(TIMEOUT, () => close('timeout'));
+        });
+      });
+    });
+  };
+  const close = outcome => {
+    const c = cur;
+    if (!c) return;
+    cur = null;
+    if (c.timer) ctx.cancel(c.timer);
+    dot.hidden = true;
+    c.outcome = outcome;
+    trials.push(c);
+    prev = { x: c.x, y: c.y };
+    next();
+  };
+
+  bindPointer(ctx, arena, {
+    start(p, t) {
+      if (!cur) { if (!over) stray++; return; }
+      const dx = p.x - cur.x, dy = p.y - cur.y, d = Math.hypot(dx, dy), rt = t - cur.onset;
+      if (d <= R + TOL) { cur.hit = { rt, d, dx, dy }; close('hit'); }
+      else cur.misses.push({ rt, d });
+    },
+  });
+  setStatus(`0 / ${N}`);
+  next();
+}
+
+function analyzeDots(trials, s) {
+  const hits = trials.filter(t => t.hit);
+  const rts = hits.map(t => t.hit.rt), errs = hits.map(t => t.hit.d);
+  const L = hits.filter(t => t.x < s.W / 2).map(t => t.hit.rt), Rr = hits.filter(t => t.x >= s.W / 2).map(t => t.hit.rt);
+  const mL = median(L), mR = median(Rr);
+  const withPrev = hits.filter(t => t.fromPrevPx != null);
+  const fitts = slope(withPrev.map(t => t.fromPrevPx / 100), withPrev.map(t => t.hit.rt));
+  return {
+    settings: { targets: s.N, targetRadiusPx: s.R, hitRadiusPx: s.R + s.TOL, timeoutMs: s.TIMEOUT, isiMs: s.ISI, arenaPx: { w: s.W, h: s.H } },
+    metrics: {
+      hits: hits.length,
+      omissions: trials.filter(t => t.outcome === 'timeout').length,
+      hitRate: rnd(hits.length / s.N, 3),
+      offTargetTaps: sum(trials.map(t => t.misses.length)),
+      strayTaps: s.stray,
+      reactionTimeMs: desc(rts),
+      spatialErrorPx: desc(errs),
+      spatialErrorNormalised: errs.length ? rnd(mean(errs) / s.R, 3) : null,
+      systematicOffsetPx: { dx: rnd(mean(hits.map(t => t.hit.dx))), dy: rnd(mean(hits.map(t => t.hit.dy))) },
+      hemifield: {
+        leftMedianRtMs: rnd(mL), rightMedianRtMs: rnd(mR), leftN: L.length, rightN: Rr.length,
+        asymmetryIndex: mL && mR ? rnd((mL - mR) / ((mL + mR) / 2), 3) : null,   // > 0: slower on the left
+      },
+      rtPer100PxTravelMs: rnd(fitts),
+    },
+    quality: { anticipations: rts.filter(v => v < 100).length },
+    raw: {
+      trialColumns: ['i', 'xPx', 'yPx', 'outcome', 'rtMs', 'errorPx', 'dxPx', 'dyPx', 'offTargetTaps'],
+      trials: trials.map(t => [t.i, rnd(t.x), rnd(t.y), t.outcome,
+        t.hit ? rnd(t.hit.rt) : null, t.hit ? rnd(t.hit.d) : null, t.hit ? rnd(t.hit.dx) : null, t.hit ? rnd(t.hit.dy) : null, t.misses.length]),
+    },
+  };
+}
+
+/* ============================================================
+   5 · trail making
+   ============================================================ */
+function layoutNodes(n, W, H, R) {
+  const M = R + 14, w = W - 2 * M, h = H - 2 * M;
+  let minD = Math.max(2 * R + 10, Math.sqrt(w * h / n) * 0.8);
+  for (let attempt = 0; attempt < 300; attempt++) {
+    const out = [];
+    for (let tries = 0; out.length < n && tries < 500; tries++) {
+      const p = { x: M + Math.random() * w, y: M + Math.random() * h };
+      if (out.every(q => Math.hypot(p.x - q.x, p.y - q.y) >= minD)) out.push(p);
+    }
+    if (out.length === n) return out;
+    minD = Math.max(2 * R + 4, minD * 0.95);
+  }
+  // fallback: jittered grid
+  const cols = Math.ceil(Math.sqrt(n * w / h)), rows = Math.ceil(n / cols);
+  return Array.from({ length: n }, (_, i) => ({ x: M + (i % cols + 0.5) * w / cols, y: M + (Math.floor(i / cols) + 0.5) * h / rows }))
+    .sort(() => Math.random() - 0.5);
+}
+
+function runTrail(ctx, mode) {
+  const labels = (mode === 'b' ? ['1', 'A', '2', 'B', '3', 'C', '4', 'D'] : ['1', '2', '3', '4', '5', '6', '7', '8'])
+    .slice(0, ctx.practice ? 4 : 8);
+  const R = 26, TOL = 10, W = arena.clientWidth, H = arena.clientHeight;
+  const pos = layoutNodes(labels.length, W, H, R);
+  arena.innerHTML = `<svg class="trail-svg" width="${W}" height="${H}"></svg>` +
+    labels.map((l, i) => `<div class="node" style="left:${pos[i].x}px;top:${pos[i].y}px">${l}</div>`).join('');
+  const svg = arena.querySelector('svg'), nodes = [...arena.querySelectorAll('.node')];
+  const isLetter = s => /[A-Z]/.test(s);
+  const correct = [], errors = [], taps = [];
+  let next = 0, onset = null, lastT = null, offTarget = 0, revisits = 0;
+
+  ctx.frame(() => ctx.frame(t => { onset = t; }));
+  setStatus(`0 / ${labels.length}`);
+
+  bindPointer(ctx, arena, {
+    start(p, t) {
+      if (onset == null || next >= labels.length) return;
+      let k = -1, best = Infinity;
+      pos.forEach((q, i) => { const d = Math.hypot(p.x - q.x, p.y - q.y); if (d < best) { best = d; k = i; } });
+      const rel = t - onset;
+      if (best > R + TOL) { offTarget++; taps.push([rnd(rel), null, 'off']); return; }
+      if (k < next) { revisits++; taps.push([rnd(rel), labels[k], 'revisit']); return; }
+      if (k === next) {
+        correct.push({ label: labels[k], t: rel, latency: t - (lastT ?? onset) });
+        lastT = t;
+        nodes[k].classList.add('done');
+        if (k > 0) {
+          const ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          ln.setAttribute('x1', pos[k - 1].x); ln.setAttribute('y1', pos[k - 1].y);
+          ln.setAttribute('x2', pos[k].x); ln.setAttribute('y2', pos[k].y);
+          svg.append(ln);
+        }
+        taps.push([rnd(rel), labels[k], 'ok']);
+        setStatus(`${++next} / ${labels.length}`);
+        if (next === labels.length) ctx.after(250, () => ctx.done(analyzeTrail(mode, labels, pos, correct, errors, taps, offTarget, revisits, R)));
+      } else {
+        // rule-switch: wrong category (number vs letter); sequence: right category, wrong item
+        const kind = mode === 'b' && isLetter(labels[k]) !== isLetter(labels[next]) ? 'ruleSwitch' : 'sequence';
+        errors.push({ t: rel, expected: labels[next], tapped: labels[k], kind });
+        taps.push([rnd(rel), labels[k], kind]);
+        nodes[k].classList.add('err');
+        ctx.after(350, () => nodes[k].classList.remove('err'));
+      }
+    },
+  });
+}
+
+function analyzeTrail(mode, labels, pos, correct, errors, taps, offTarget, revisits, R) {
+  const lats = correct.map(c => c.latency);
+  const total = correct[correct.length - 1].t;
+  let path = 0;
+  for (let i = 1; i < pos.length; i++) path += Math.hypot(pos[i].x - pos[i - 1].x, pos[i].y - pos[i - 1].y);
+  const moving = total - lats[0];
+  return {
+    settings: { variant: mode === 'b' ? 'alternating 1-A-2-B' : 'numeric 1-8', targets: labels.length, nodeRadiusPx: R },
+    metrics: {
+      completionTimeMs: rnd(total),
+      initiationLatencyMs: rnd(lats[0]),
+      decisionLatencyMs: desc(lats.slice(1)),
+      errors: {
+        outOfSequence: errors.length,
+        ruleSwitch: errors.filter(e => e.kind === 'ruleSwitch').length,
+        sequence: errors.filter(e => e.kind === 'sequence').length,
+      },
+      offTargetTaps: offTarget,
+      revisits,
+      pathLengthPx: rnd(path, 0),
+      pathSpeedPxPerS: moving > 0 ? rnd(path / moving * 1000) : null,
+    },
+    quality: {},
+    raw: {
+      layoutColumns: ['label', 'xPx', 'yPx'],
+      layout: labels.map((l, i) => [l, rnd(pos[i].x), rnd(pos[i].y)]),
+      correctColumns: ['label', 'tMs', 'latencyMs'],
+      correct: correct.map(c => [c.label, rnd(c.t), rnd(c.latency)]),
+      tapColumns: ['tMs', 'label', 'outcome'],
+      taps,
+    },
+  };
+}
+
+/* ============================================================
+   task registry
+   ============================================================ */
+const TASKS = {
+  typing: {
+    n: 1, name: 'typing sprint', domain: 'keystroke dynamics', run: runTyping,
+    intro: '<p>type the sentence at your normal pace. fix mistakes with backspace.</p><p>it ends when the sentence matches, or tap done.</p>',
+    measures: 'hold time, flight time, inter-key intervals, backspace rate, hesitations',
+    headline: m => [
+      ['completed', m.completed ? 'yes' : `no · ${m.uncorrectedErrors} char errors`],
+      ['time', secs(m.durationMs)],
+      ['speed', m.wpm == null ? '—' : `${m.wpm} wpm`],
+      ['hold time, median', ms(m.holdTimeMs.median)],
+      ['flight time, median', ms(m.flightTimeMs.median)],
+      ['backspaces', `${m.backspaces} · ${pct(m.backspaceRate)} of keys`],
+      ['hesitations', m.hesitations.count],
+    ],
+  },
+  tap: {
+    n: 2, name: 'two-pad tap', domain: 'bradykinesia · fatigue', run: runTap,
+    intro: '<p>rest the phone on a table. with the index and middle finger of one hand, tap left, right, left, right — as fast as you can.</p><p>10 seconds, timed from your first tap.</p>',
+    measures: 'inter-tap interval, rhythm variability, fatigue slope, touch dwell',
+    modes: [['right', 'right hand'], ['left', 'left hand']],
+    headline: m => [
+      ['taps', `${m.taps} · ${m.tapsPerSecond}/s`],
+      ['inter-tap interval', `${ms(m.interTapIntervalMs.mean)} · cv ${m.interTapIntervalMs.cv ?? '—'}`],
+      ['fatigue slope', m.fatigue.itiSlopeMsPerS == null ? '—' : `${signed(m.fatigue.itiSlopeMsPerS)} ms/s`],
+      ['first → second half', m.fatigue.decrementPct == null ? '—' : `${signed(m.fatigue.decrementPct)}%`],
+      ['alternation errors', m.alternationErrors],
+      ['dwell, median', ms(m.dwellMs.median)],
+    ],
+  },
+  spiral: {
+    n: 3, name: 'trace the spiral', domain: 'tremor · fine motor control', run: runSpiral, spatial: true,
+    intro: '<p>put your index finger on the dot in the centre and follow the line outwards to the end without lifting.</p><p>go at a comfortable pace and stay on the line.</p>',
+    measures: 'distance from the ideal curve, velocity, high-frequency jitter, tremor frequency',
+    headline: m => [
+      ['offset from curve, mean', px(m.distanceToCurvePx.mean)],
+      ['radial error, rms', px(m.radialErrorPx.rms)],
+      ['jitter, rms', px(m.jitter.rmsPx)],
+      ['tremor band peak', m.tremor.dominantHz == null ? '—' : `${m.tremor.dominantHz} Hz · ${pct(m.tremor.bandPowerRatio4to12Hz)} in 4–12 Hz`],
+      ['speed', m.speedPxPerS.mean == null ? '—' : `${Math.round(m.speedPxPerS.mean)} px/s · cv ${m.speedPxPerS.cv}`],
+      ['coverage', pct(m.coverage)],
+      ['time', secs(m.durationMs)],
+    ],
+  },
+  dots: {
+    n: 4, name: 'whack-a-dot', domain: 'visuospatial · touch accuracy', run: runDots, spatial: true,
+    intro: '<p>a dot appears somewhere on the screen. tap its centre as fast as you can.</p><p>20 dots. each moves on after 1.5 s.</p>',
+    measures: 'reaction time, distance from target centre, left/right asymmetry',
+    headline: m => [
+      ['hits', `${m.hits} / ${m.hits + m.omissions}`],
+      ['reaction time, median', ms(m.reactionTimeMs.median)],
+      ['spatial error, median', px(m.spatialErrorPx.median)],
+      ['systematic offset', m.systematicOffsetPx.dx == null ? '—' : `x ${signed(m.systematicOffsetPx.dx)} · y ${signed(m.systematicOffsetPx.dy)} px`],
+      ['left / right rt', `${ms(m.hemifield.leftMedianRtMs)} / ${ms(m.hemifield.rightMedianRtMs)}`],
+      ['off-target taps', m.offTargetTaps],
+    ],
+  },
+  trail: {
+    n: 5, name: 'trail making', domain: 'executive function · processing speed', run: runTrail, spatial: true,
+    intro: '<p>tap the circles in order, as fast as you can.</p><p>numbers: 1 → 2 → 3 … 8<br>alternating: 1 → A → 2 → B … D</p>',
+    measures: 'completion time, decision latency between taps, out-of-sequence errors',
+    modes: [['a', 'numbers'], ['b', 'alternating']],
+    headline: m => [
+      ['completion', secs(m.completionTimeMs)],
+      ['first tap', ms(m.initiationLatencyMs)],
+      ['decision latency, mean', ms(m.decisionLatencyMs.mean)],
+      ['decision latency, max', ms(m.decisionLatencyMs.max)],
+      ['errors', `${m.errors.outOfSequence} · ${m.errors.ruleSwitch} rule-switch, ${m.errors.sequence} sequence`],
+    ],
+  },
+};
+Object.entries(TASKS).forEach(([id, t]) => { t.id = id; });
+
+/* ============================================================
+   storage
+   ============================================================ */
+const STORE_KEY = 'nbm.results.v1';
+let results = [];
+try { results = JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch (e) { results = []; }
+let storeNote = '';
+const persist = () => {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(results)); storeNote = ''; }
+  catch (e) { storeNote = 'local storage is full or blocked — results are kept for this session only. export them.'; }
+};
+
+function deviceInfo() {
+  return {
+    userAgent: navigator.userAgent,
+    language: navigator.language,
+    viewportPx: { w: innerWidth, h: innerHeight },
+    screenPx: { w: screen.width, h: screen.height },
+    devicePixelRatio: window.devicePixelRatio || 1,
+    maxTouchPoints: navigator.maxTouchPoints || 0,
+    input: HAS_TOUCH ? 'touch' : 'mouse',
+    orientation: (screen.orientation && screen.orientation.type) || null,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  };
+}
+
+// Inside the claude.ai viewer, files go through its save prompt (plain download links are inert there).
+// Served on its own, the page falls back to an ordinary blob download.
+const IN_VIEWER = !!(window.claude && typeof window.claude.use === 'function');
+const saver = IN_VIEWER ? window.claude.use('downloads').catch(() => null) : Promise.resolve('anchor');
+
+async function saveJSON(filename, data) {
+  const text = JSON.stringify(data, null, 2);
+  const dl = await saver;
+  if (dl === 'anchor') {
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return 'saved';
+  }
+  if (!dl) return 'unavailable';
+  try { await dl.save({ filename, data: text }); return 'saved'; }
+  catch (e) { return e && e.code === 'declined' ? 'cancelled' : e && e.code === 'rate_limited' ? 'busy' : 'unavailable'; }
+}
+
+const SAVE_LABEL = { saved: 'saved', cancelled: 'cancelled', busy: 'try again in a moment', unavailable: 'saving is unavailable here; use copy json' };
+const flash = (btn, text, restore) => { btn.textContent = text; setTimeout(() => { btn.textContent = restore(); }, 2500); };
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  const ta = Object.assign(document.createElement('textarea'), { value: text });
+  ta.style.cssText = 'position:fixed;opacity:0';
+  document.body.append(ta); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) {}
+  ta.remove();
+  return ok;
+}
+
+/* ============================================================
+   navigation
+   ============================================================ */
+const state = { ctx: null, startedAt: null, last: null };
+
+function show(id) { document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === id)); }
+function stopCurrent() { if (state.ctx) { state.ctx.dispose(); state.ctx = null; } }
+
+function renderMenu() {
+  $('#tasks').innerHTML = Object.values(TASKS).map(t => {
+    const n = results.filter(r => r.task === t.id).length;
+    return `<li><button class="task" type="button" data-id="${t.id}">
+      <span class="num">0${t.n}</span>
+      <span class="name">${t.name}<small>${t.domain}</small></span>
+      <span class="runs">${n ? `${n} run${n > 1 ? 's' : ''}` : ''}</span></button></li>`;
+  }).join('');
+  $('#export-all').textContent = exportLabel();
+  $('#export-all').disabled = !results.length;
+  disarmClear();
+  $('#store-note').textContent = storeNote;
+}
+
+const exportLabel = () => `export all (${results.length})`;
+
+function goMenu() {
+  state.mode = 'lab';
+  $('#quit').textContent = '← tasks';
+  stopCurrent(); renderMenu(); show('menu');
+}
+
+function openTask(id) {
+  const t = TASKS[id];
+  stopCurrent();
+  show('game');
+  $('#g-title').textContent = t.name;
+  setStatus('');
+  const modes = t.modes || [[null, 'start']];
+  arena.innerHTML = `<div class="intro scroll"><div class="wrap">
+    <div class="label">task 0${t.n} · ${t.domain}</div>
+    <h2>${t.name}</h2>
+    ${t.intro}
+    <div class="label" style="margin-top:22px">records</div>
+    <p class="measures">${t.measures}</p>
+    <div class="starts">${modes.map(([m, l]) => `<button class="go" type="button" data-mode="${m ?? ''}">${l} →</button>`).join('')}</div>
+  </div></div>`;
+  arena.querySelectorAll('.go').forEach(b => b.addEventListener('click', () => startTask(id, b.dataset.mode || null)));
+}
+
+// opts.practice runs a shortened version; opts.onDone takes the result instead of the lab results screen
+function startTask(id, mode, opts = {}) {
+  const t = TASKS[id];
+  stopCurrent();
+  show('game');
+  $('#g-title').textContent = t.name;
+  arena.innerHTML = '';
+  setStatus('');
+  const ctx = makeCtx();
+  ctx.practice = !!opts.practice;
+  ctx.done = out => finishTask(t, mode, out, opts);
+  state.ctx = ctx;
+  state.startedAt = new Date().toISOString();
+  t.run(ctx, mode);
+}
+
+function finishTask(task, mode, out, opts = {}) {
+  const flags = state.ctx ? { ...state.ctx.flags } : {};
+  stopCurrent();
+  const quality = { ...out.quality, pageHiddenDuringTask: !!flags.hidden };
+  if (task.spatial) quality.viewportChangedDuringTask = !!flags.resized;
+  const res = {
+    schema: 'nbm-result/1',
+    id: uid(),
+    task: task.id,
+    taskName: task.name,
+    mode: mode || null,
+    startedAt: state.startedAt,
+    completedAt: new Date().toISOString(),
+    device: deviceInfo(),
+    settings: out.settings,
+    metrics: out.metrics,
+    quality,
+    raw: out.raw,
+  };
+  console.log(`[biomarker] ${task.id}${opts.practice ? ' (practice)' : ''}`, res);
+  if (opts.onDone) return opts.onDone(res);
+  results.push(res);
+  persist();
+  showResult(res);
+}
+
+function showResult(res) {
+  const t = TASKS[res.task];
+  state.last = res;
+  const modeLabel = res.mode && t.modes ? (t.modes.find(m => m[0] === res.mode) || [])[1] : null;
+  $('#r-task').textContent = `task 0${t.n} · ${t.domain}`;
+  $('#r-title').textContent = t.name + (modeLabel ? ` — ${modeLabel}` : '');
+  $('#r-when').textContent = new Date(res.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  $('#r-kv').innerHTML = t.headline(res.metrics).map(([k, v]) => `<div><dt>${k}</dt><dd>${v ?? '—'}</dd></div>`).join('');
+  const { raw, ...summary } = res;
+  $('#r-json').textContent = fmtJSON(summary);
+  $('#r-raw-n').textContent = '· ' + Object.entries(raw).filter(([k, v]) => Array.isArray(v) && !/columns$/i.test(k))
+    .map(([k, v]) => `${v.length} ${k}`).join(', ');
+  $('#r-raw').textContent = '';
+  $('#r-raw-d').open = false;
+  $('#r-note').textContent = storeNote;
+  $('#r-copy').textContent = 'copy json';
+  show('results');
+  $('#results .res').scrollTop = 0;
+}
+
+/* ============================================================
+   study: consent → four questions → fixed sequence of rounds → one submission
+   ============================================================ */
+
+// Fill in once the Supabase project exists (setup steps are in supabase.sql).
+const STUDY = {
+  version: 'study-1',
+  consentVersion: 'consent-1',           // bump whenever the information page text changes
+  researcher: 'Rishikesh Mistry',                 // shown on the information page
+  contact: 'rishikesh.mistry@outlook.com',        // for questions and deletion requests
+  storage: 'a secured database in the UK (London)',
+  retention: 'until this project ends, and for no more than two years',
+  supabaseUrl: 'https://dtkbqootqrcdbpnkpzlm.supabase.co',
+  supabaseKey: 'sb_publishable_InmmTnUK9N-aJnWc42EYYw_e1DTnHc1',   // public key: can add rows, never read them. never the secret key.
+  table: 'sessions',
+};
+
+const AGE_BANDS = ['18-24', '25-29', '30-34', '35-39', '40-44', '45-49', '50-54', '55-59', '60-64', '65-69', '70-74', '75-79', '80+'];
+const QUESTIONS = [
+  { id: 'age', legend: 'age', options: [['under-18', 'under 18'], ...AGE_BANDS.map(a => [a, a.replace('-', '–')])] },
+  { id: 'gender', legend: 'gender', options: [['female', 'female'], ['male', 'male'], ['another', 'another gender'], ['prefer_not', 'prefer not to say']] },
+  { id: 'hand', legend: 'which hand do you write with?', options: [['right', 'right'], ['left', 'left'], ['both', 'either']] },
+  {
+    id: 'screen',
+    legend: 'do you have a diagnosed neurological condition, or anything currently affecting your hands, arms or eyesight?',
+    hint: 'for example Parkinson’s, stroke, MS, a tremor, arthritis in your hands, or an injury. glasses and contact lenses are fine. this answer is not stored.',
+    options: [['no', 'no'], ['yes', 'yes']],
+  },
+];
+
+const STUDY_KEY = 'nbm.study.v1', DONE_KEY = 'nbm.study.done';
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+};
+const sb = $('#study-body');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const who = () => STUDY.researcher || 'the researcher who shared this link';
+let study = null, consentAt = null;
+
+function makeCode() {
+  const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';     // no 0/O or 1/I/L
+  const v = new Uint32Array(6);
+  crypto.getRandomValues(v);
+  const c = Array.from(v, x => A[x % A.length]).join('');
+  return `${c.slice(0, 3)}-${c.slice(3)}`;
+}
+
+// fixed order for everyone; the writing hand goes first
+function studySteps(hand) {
+  const a = hand === 'left' ? 'left' : 'right', b = a === 'left' ? 'right' : 'left';
+  const finger = `use the index finger of your ${a} hand.`;
+  return [
+    { task: 'typing', note: 'hold the phone the way you normally type.' },
+    { task: 'tap', mode: a, hand: a, note: `use your ${a} hand.` },
+    { task: 'tap', mode: b, hand: b, note: `now your ${b} hand.` },
+    { task: 'spiral', hand: a, note: finger },
+    { task: 'dots', hand: a, note: finger },
+    { task: 'trail', mode: 'a', hand: a, note: 'this round: numbers only, 1 → 2 → 3 … 8.' },
+    { task: 'trail', mode: 'b', hand: a, note: 'this round: alternate numbers and letters, 1 → A → 2 → B … D.' },
+  ];
+}
+const ROUNDS = studySteps('right').length;
+
+function studyScreen(html) {
+  state.mode = 'study';
+  stopCurrent();
+  sb.innerHTML = html;
+  show('study');
+  $('#study').scrollTop = 0;
+}
+
+function studyHome() {
+  study = store.get(STUDY_KEY);
+  if (study && study.status === 'pending') return studySubmit();
+  const prior = store.get(DONE_KEY);
+  const resumable = !!(study && study.status === 'active' && Date.now() - Date.parse(study.startedAt) < 6 * 3600e3);
+  studyScreen(`
+    <div class="label">research study · about 6 minutes</div>
+    <h1>a six-minute touch study</h1>
+    <p>help build a baseline of how adults without neurological conditions do on short phone tasks: typing a sentence, tapping with each hand, tracing a spiral, hitting targets and joining dots in order.</p>
+    <p class="muted">you’ll need a phone, a table to rest it on and a quiet few minutes. no name or email.</p>
+    ${resumable ? `<p>you’re part-way through: ${study.step} of ${ROUNDS} rounds done.</p>` : ''}
+    ${!resumable && prior ? `<p>you’ve already taken part on this phone (code ${esc(prior.code)}). thank you. taking part again is welcome, because repeat runs show how consistent the tasks are.</p>` : ''}
+    <div class="starts">${resumable
+      ? '<button class="go" type="button" data-act="continue">continue →</button><button class="link" type="button" data-act="restart">start over</button>'
+      : `<button class="go" type="button" data-act="info">${prior ? 'take part again' : 'find out more'} →</button>`}</div>`);
+  const on = (act, fn) => { const b = sb.querySelector(`[data-act="${act}"]`); if (b) b.addEventListener('click', fn); };
+  on('continue', () => studyStep());
+  on('restart', () => { store.set(STUDY_KEY, null); study = null; studyInfo(); });
+  on('info', studyInfo);
+}
+
+function studyInfo() {
+  consentAt = null;
+  const sections = [
+    ['what this is', 'a personal research project building a baseline of how healthy adults perform short touch tasks on a phone. it’s an experiment, not a medical test, and it can’t tell you anything about your health.'],
+    ['what you’ll do', `answer four questions, then complete ${ROUNDS} short rounds, about six minutes in total. sit down, and rest the phone on a table for the tapping rounds. each round has an optional practice.`],
+    ['what’s recorded', 'your age band, gender and writing hand. during the tasks: the timing and position of your touches and key presses, and the sentence you type. your phone’s model, screen size and browser. nothing else on your phone is accessed. the study doesn’t ask for or store your name, email, exact age or IP address, although the services hosting this page keep routine access logs for a short time.'],
+    ['who sees it', `only ${esc(who())}. records are kept in ${esc(STUDY.storage)} and can’t be read back through this page. findings may be shared as group summaries, and anonymous records may be shared with research partners, such as a university or clinic, for the same purpose.`],
+    ['how long it’s kept', `${esc(STUDY.retention)}.`],
+    ['your choice', `taking part is voluntary. you can stop at any time by closing the page, because nothing is sent until the last round is finished. afterwards you’ll get a participant code. to have your data deleted, send that code to ${esc(STUDY.contact || who())}.`],
+    ['please note', 'this is not a medical device and doesn’t diagnose anything. if you’re worried about your health, speak to a doctor.'],
+  ];
+  studyScreen(`
+    <div class="label">information · consent</div>
+    <h1>before you start</h1>
+    ${sections.map(([h, p]) => `<div class="sect"><div class="label">${h}</div><p>${p}</p></div>`).join('')}
+    <label class="agree"><input type="checkbox" id="consent-ok"><span>I’m 18 or over, I’ve read this, and I agree to take part.</span></label>
+    <div class="starts"><button class="go" type="button" id="consent-next" disabled>continue →</button><button class="link" type="button" id="consent-back">back</button></div>`);
+  const ok = $('#consent-ok'), next = $('#consent-next');
+  ok.addEventListener('change', () => { next.disabled = !ok.checked; });
+  next.addEventListener('click', () => { consentAt = new Date().toISOString(); studyQuestions(); });
+  $('#consent-back').addEventListener('click', studyHome);
+}
+
+function studyQuestions() {
+  studyScreen(`
+    <div class="label">about you · 4 questions</div>
+    <h1>a few details</h1>
+    <form id="qform" novalidate>
+      ${QUESTIONS.map(q => `<fieldset class="q"><legend>${q.legend}</legend>${q.hint ? `<p class="q-hint">${q.hint}</p>` : ''}
+        <div class="opts">${q.options.map(([v, l]) => `<label class="opt"><input type="radio" name="${q.id}" value="${v}" id="q-${q.id}-${v}"><span>${l}</span></label>`).join('')}</div>
+      </fieldset>`).join('')}
+      <div class="starts"><button class="go" type="submit" id="q-next" disabled>start the tasks →</button></div>
+    </form>`);
+  const form = $('#qform'), next = $('#q-next');
+  const val = id => { const el = form.querySelector(`input[name="${id}"]:checked`); return el ? el.value : null; };
+  const complete = () => QUESTIONS.every(q => val(q.id));
+  form.addEventListener('change', () => { next.disabled = !complete(); });
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    if (!complete()) return;
+    if (val('age') === 'under-18') return studyIneligible('age');
+    if (val('screen') === 'yes') return studyIneligible('health');   // screened out: nothing is stored
+    const prior = store.get(DONE_KEY);
+    study = {
+      code: makeCode(),
+      status: 'active',
+      step: 0,
+      startedAt: new Date().toISOString(),
+      consent: { version: STUDY.consentVersion, at: consentAt || new Date().toISOString() },
+      demographics: { ageBand: val('age'), gender: val('gender'), dominantHand: val('hand') },
+      previousCodeOnDevice: prior ? prior.code : null,
+      results: [],
+    };
+    store.set(STUDY_KEY, study);
+    studyStep();
+  });
+}
+
+function studyIneligible(kind) {
+  studyScreen(`
+    <div class="label">thank you</div>
+    <h1>${kind === 'age' ? 'this study is for adults' : 'thanks for your interest'}</h1>
+    <p>${kind === 'age'
+      ? 'only people aged 18 or over can take part.'
+      : 'this study is building a baseline from people without these conditions, so it ends here for you.'} nothing has been recorded.</p>
+    <div class="starts"><button class="link" type="button" id="inel-back">back to the start</button></div>`);
+  $('#inel-back').addEventListener('click', studyHome);
+}
+
+function studyStep(note = '') {
+  const steps = studySteps(study.demographics.dominantHand);
+  if (study.step >= steps.length) return studyFinish();
+  const s = steps[study.step], t = TASKS[s.task];
+  stopCurrent();
+  state.mode = 'study';
+  $('#quit').textContent = '← pause';
+  show('game');
+  $('#g-title').textContent = t.name;
+  setStatus(`${study.step + 1} / ${steps.length}`);
+  arena.innerHTML = `<div class="intro scroll"><div class="wrap">
+    <div class="label">round ${study.step + 1} of ${steps.length}</div>
+    <h2>${t.name}</h2>
+    ${t.intro}
+    <p class="step-note">${s.note}</p>
+    ${note ? `<p class="measures">${note}</p>` : ''}
+    <div class="starts">
+      <button class="go" type="button" data-act="start">start →</button>
+      <button class="link" type="button" data-act="practice">${note ? 'practise again' : 'practise first'}</button>
+    </div>
+  </div></div>`;
+  arena.querySelector('[data-act="start"]').addEventListener('click', () => startTask(s.task, s.mode || null, {
+    onDone: res => {
+      const { device, ...rest } = res;                 // device is recorded once for the whole session
+      study.results.push({ ...rest, round: study.step + 1, hand: s.hand || null });
+      study.step++;
+      store.set(STUDY_KEY, study);
+      studyStep();
+    },
+  }));
+  arena.querySelector('[data-act="practice"]').addEventListener('click', () => startTask(s.task, s.mode || null, {
+    practice: true,
+    onDone: () => studyStep('practice done. start when you’re ready; this time it counts.'),
+  }));
+}
+
+function studyFinish() {
+  study.status = 'pending';
+  study.completedAt = new Date().toISOString();
+  store.set(STUDY_KEY, study);
+  studySubmit();
+}
+
+function studyRecord() {
+  return {
+    schema: 'nbm-session/1',
+    study: STUDY.version,
+    participantCode: study.code,
+    previousCodeOnDevice: study.previousCodeOnDevice,
+    consent: study.consent,
+    startedAt: study.startedAt,
+    completedAt: study.completedAt,
+    demographics: study.demographics,
+    device: deviceInfo(),
+    tasks: study.results,
+  };
+}
+
+async function sendRecord(rec) {
+  if (!STUDY.supabaseUrl || !STUDY.supabaseKey) return { ok: false, reason: 'not_configured' };
+  const key = STUDY.supabaseKey;
+  const headers = { apikey: key, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
+  if (key.startsWith('eyJ')) headers.Authorization = `Bearer ${key}`;   // legacy JWT-style anon keys
+  try {
+    const r = await fetch(`${STUDY.supabaseUrl.replace(/\/+$/, '')}/rest/v1/${STUDY.table}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        participant_code: rec.participantCode,
+        schema_version: rec.schema,
+        study_version: rec.study,
+        consent_version: rec.consent.version,
+        age_band: rec.demographics.ageBand,
+        gender: rec.demographics.gender,
+        dominant_hand: rec.demographics.dominantHand,
+        payload: rec,
+      }),
+    });
+    // 409 means this participant code is already stored, i.e. an earlier attempt got through
+    if (r.ok || r.status === 409) return { ok: true };
+    return { ok: false, reason: `the server answered ${r.status}`, detail: (await r.text()).slice(0, 200) };
+  } catch (e) {
+    return { ok: false, reason: 'no connection' };
+  }
+}
+
+async function studySubmit() {
+  studyScreen('<div class="label">finished</div><h1>sending your results…</h1>');
+  const rec = studyRecord();
+  const out = await sendRecord(rec);
+  if (state.mode !== 'study') return;                  // navigated away meanwhile
+
+  if (out.ok) {
+    store.set(DONE_KEY, { code: rec.participantCode, at: new Date().toISOString() });
+    store.set(STUDY_KEY, null);
+    study = null;
+    studyScreen(`
+      <div class="label">sent</div>
+      <h1>thank you</h1>
+      <p>your results have been sent. you can close this page.</p>
+      <div class="sect"><div class="label">your participant code</div>
+        <div class="pcode">${esc(rec.participantCode)}</div>
+        <p class="muted">keep it if you might want your data deleted later: send it to ${esc(STUDY.contact || who())}.</p>
+      </div>`);
+    return;
+  }
+
+  if (out.reason === 'not_configured') {
+    studyScreen(`
+      <div class="label">finished · not sent</div>
+      <h1>thank you</h1>
+      <p>the study’s storage isn’t connected yet, so these results are saved on this phone only.</p>
+      <p class="muted">researcher: add the Supabase URL and key to STUDY in index.html. until then, copy or save this session here.</p>
+      <div class="starts">
+        <button class="link" type="button" data-act="copy">copy json</button>
+        <button class="link" type="button" data-act="save">download</button>
+        <button class="link" type="button" data-act="discard">discard</button>
+      </div>`);
+    const btn = act => sb.querySelector(`[data-act="${act}"]`);
+    btn('copy').addEventListener('click', async () => {
+      btn('copy').textContent = (await copyText(JSON.stringify(rec, null, 2))) ? 'copied' : 'copy blocked';
+    });
+    btn('save').addEventListener('click', async () => {
+      flash(btn('save'), SAVE_LABEL[await saveJSON(`session-${rec.participantCode}.json`, rec)], () => 'download');
+    });
+    let armed = false;
+    btn('discard').addEventListener('click', () => {
+      if (!armed) { armed = true; btn('discard').textContent = 'tap again to discard'; return; }
+      store.set(STUDY_KEY, null);
+      study = null;
+      studyHome();
+    });
+    return;
+  }
+
+  studyScreen(`
+    <div class="label">finished · not sent yet</div>
+    <h1>couldn’t send your results</h1>
+    <p>check your connection and try again. your results stay on this phone until they’re sent.</p>
+    <p class="muted">${esc(out.reason)}${out.detail ? `: ${esc(out.detail)}` : ''}</p>
+    <div class="starts"><button class="go" type="button" data-act="retry">try again →</button></div>`);
+  sb.querySelector('[data-act="retry"]').addEventListener('click', studySubmit);
+}
+
+/* ============================================================
+   wiring
+   ============================================================ */
+$('#tasks').addEventListener('click', e => { const b = e.target.closest('.task'); if (b) openTask(b.dataset.id); });
+$('#quit').addEventListener('click', () => (state.mode === 'study' ? studyHome() : goMenu()));
+$('#to-study').addEventListener('click', () => { history.replaceState(null, '', location.pathname + location.search); studyHome(); });
+$('#r-back').addEventListener('click', goMenu);
+$('#r-again').addEventListener('click', () => state.last && startTask(state.last.task, state.last.mode));
+$('#r-copy').addEventListener('click', async () => {
+  if (!state.last) return;
+  const ok = await copyText(JSON.stringify(state.last, null, 2));
+  if (!ok) {
+    // last resort: select the visible JSON so it can be copied by hand
+    const r = document.createRange(), s = getSelection();
+    r.selectNodeContents($('#r-json')); s.removeAllRanges(); s.addRange(r);
+  }
+  $('#r-copy').textContent = ok ? 'copied' : 'copy blocked; json selected';
+});
+$('#r-dl').addEventListener('click', async () => {
+  const r = state.last;
+  if (!r) return;
+  const out = await saveJSON(`${r.task}-${r.completedAt.replace(/[:.]/g, '-')}.json`, r);
+  flash($('#r-dl'), SAVE_LABEL[out], () => 'download');
+});
+$('#r-raw-d').addEventListener('toggle', () => {
+  if ($('#r-raw-d').open && state.last && !$('#r-raw').textContent) $('#r-raw').textContent = fmtJSON(state.last.raw);
+});
+$('#export-all').addEventListener('click', async () => {
+  if (!results.length) return;
+  const out = await saveJSON(`biomarkers-${new Date().toISOString().slice(0, 10)}.json`, { exportedAt: new Date().toISOString(), results });
+  flash($('#export-all'), SAVE_LABEL[out], exportLabel);
+});
+saver.then(dl => { if (!dl) ['#r-dl', '#export-all'].forEach(s => { $(s).hidden = true; }); });
+
+// two-step clear: the first tap arms it, a second tap within 4 s deletes
+let clearTimer = null;
+function disarmClear() {
+  clearTimeout(clearTimer); clearTimer = null;
+  $('#clear-all').textContent = 'clear';
+  $('#clear-all').disabled = !results.length;
+}
+$('#clear-all').addEventListener('click', () => {
+  if (!results.length) return;
+  if (!clearTimer) {
+    $('#clear-all').textContent = `tap again to delete ${results.length} result${results.length > 1 ? 's' : ''}`;
+    clearTimer = setTimeout(disarmClear, 4000);
+    return;
+  }
+  results = [];
+  persist();
+  renderMenu();
+});
+
+// iOS: block pinch-zoom gestures that ignore user-scalable=no
+['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault()));
+
+// participants land on the study; the free task menu lives at #lab
+const route = () => (location.hash === '#lab' ? goMenu() : studyHome());
+window.addEventListener('hashchange', route);
+route();
+})();
+</script>
+</body>
+</html>
