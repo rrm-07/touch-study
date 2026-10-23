@@ -13,15 +13,15 @@
 /* layout: full-screen views (menu, task, result) separated by hairlines; system type, one warm accent */
 :root {
   --bg: #f6f6f3; --ink: #161616; --muted: #76766f; --line: #d9d9d2; --soft: #ebebe5;
-  --accent: #c2410c; --guide: #e3e3dc;
+  --accent: #c2410c; --guide: #e3e3dc; --key: #fdfdfb;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #121211; --ink: #e9e9e4; --muted: #8b8b84; --line: #2e2e2b; --soft: #1d1d1b; --accent: #f97316; --guide: #2a2a27; color-scheme: dark; }
+  :root:not([data-theme="light"]) { --bg: #121211; --ink: #e9e9e4; --muted: #8b8b84; --line: #2e2e2b; --soft: #1d1d1b; --accent: #f97316; --guide: #2a2a27; --key: #2c2c29; color-scheme: dark; }
 }
-:root[data-theme="dark"] { --bg: #121211; --ink: #e9e9e4; --muted: #8b8b84; --line: #2e2e2b; --soft: #1d1d1b; --accent: #f97316; --guide: #2a2a27; color-scheme: dark; }
+:root[data-theme="dark"] { --bg: #121211; --ink: #e9e9e4; --muted: #8b8b84; --line: #2e2e2b; --soft: #1d1d1b; --accent: #f97316; --guide: #2a2a27; --key: #2c2c29; color-scheme: dark; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--ink); overscroll-behavior: none; }
 body {
@@ -77,23 +77,36 @@ button:focus-visible { outline: 1px dotted var(--muted); outline-offset: 3px; }
 .go { font-size: 18px; padding: 8px 0 3px; border-bottom: 1.5px solid var(--ink); }
 
 /* typing */
-.typing { position: absolute; inset: 0; padding: 22px 16px; max-width: 560px; margin: 0 auto; touch-action: manipulation; }
-.sentence { font-size: 21px; line-height: 1.55; margin: 8px 0 18px; white-space: pre-wrap; }
+.typing { position: absolute; top: 0; left: 0; right: 0; padding: 20px 16px 0; max-width: 560px; margin: 0 auto; }
+.sentence, .typed { font-size: 20px; line-height: 1.5; margin: 6px 0 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.typed { min-height: 1.5em; }
+.caret { display: inline-block; width: 2px; height: 1.1em; margin-left: 1px; vertical-align: -.15em; background: var(--ink); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
 .sentence span { color: var(--muted); }
 .sentence .ok { color: var(--ink); }
 .sentence .bad { color: var(--accent); text-decoration: underline; }
 .sentence .cur { box-shadow: inset 0 -2px var(--ink); }
-#ty-in { width: 100%; font: 20px var(--sans); color: var(--ink); background: transparent; border: 0; border-radius: 0;
-  border-bottom: 1px solid var(--ink); padding: 10px 0; outline: none; }
-.typing-foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: 14px; font-size: 13px; color: var(--muted); }
+.typing-foot { font-size: 13px; color: var(--muted); }
+.kb { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 3px 12px; background: var(--soft); border-top: 1px solid var(--line); }
+.kb-in { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.kb-row { display: flex; justify-content: center; gap: 5px; }
+.key { flex: 0 0 calc((100% - 45px) / 10); height: 44px; border-radius: 5px; background: var(--key); color: var(--ink);
+  display: grid; place-items: center; font-size: 19px; box-shadow: 0 1px 0 var(--line); }
+.key.k-pad { visibility: hidden; }
+.key.k-pad, .key.k-bksp { flex-basis: calc((100% - 45px) / 10 * 1.4); }
+.key.k-space { flex: 1 1 auto; font-size: 14px; color: var(--muted); }
+.key.k-done { flex: 0 0 calc((100% - 45px) / 10 * 2.4); font-size: 14px; }
+.key.down { background: var(--ink); color: var(--bg); }
 
 /* two-pad tap */
 .clock { position: absolute; top: 26px; left: 0; right: 0; text-align: center; }
 .clock b { display: block; font-size: 60px; font-weight: 300; letter-spacing: -.02em; line-height: 1; margin-bottom: 8px; }
-.pad { --d: min(40vw, 34vh, 220px); position: absolute; bottom: 15%; width: var(--d); height: var(--d); border-radius: 50%;
+/* pads sit side by side in the middle, a comfortable spread for two fingers of one hand */
+.pad { --d: min(36vw, 30vh, 150px); --gap: 18px; position: absolute; bottom: 16%; width: var(--d); height: var(--d); border-radius: 50%;
   border: 1px solid var(--ink); display: grid; place-items: center; font-size: 13px; color: var(--muted); }
-.pad.l { left: max(5vw, 14px); }
-.pad.r { right: max(5vw, 14px); }
+.pad.l { left: calc(50% - var(--gap) / 2 - var(--d)); }
+.pad.r { left: calc(50% + var(--gap) / 2); }
 .pad.down { background: var(--ink); color: var(--bg); }
 
 /* whack-a-dot */
@@ -370,7 +383,7 @@ function makeCtx() {
   return ctx;
 }
 
-// Touch-first input. Handlers get {id, x, y} in element-local CSS px plus the event timestamp.
+// Touch-first input. Handlers get {id, x, y} in element-local CSS px, the event timestamp and the event.
 // Mouse is wired up only on devices with no touch support, so the tasks can be tried on a laptop.
 function bindPointer(ctx, el, h) {
   let box = el.getBoundingClientRect();
@@ -378,7 +391,7 @@ function bindPointer(ctx, el, h) {
   const each = (e, fn) => {
     if (!fn) return;
     const t = evT(e);
-    for (const c of e.changedTouches) { if (!ctx.alive) return; fn(pt(c.identifier, c.clientX, c.clientY), t); }
+    for (const c of e.changedTouches) { if (!ctx.alive) return; fn(pt(c.identifier, c.clientX, c.clientY), t, e); }
   };
   const o = { passive: false };
   ctx.on(el, 'touchstart', e => { e.preventDefault(); box = el.getBoundingClientRect(); each(e, h.start); }, o);
@@ -391,7 +404,7 @@ function bindPointer(ctx, el, h) {
     ctx.on(el, 'mousedown', e => {
       if (e.button !== 0) return;
       e.preventDefault(); down = true; box = el.getBoundingClientRect();
-      h.start && h.start(pt('mouse', e.clientX, e.clientY), evT(e));
+      h.start && h.start(pt('mouse', e.clientX, e.clientY), evT(e), e);
     });
     ctx.on(window, 'mousemove', e => { if (down && h.move) h.move(pt('mouse', e.clientX, e.clientY), evT(e)); });
     ctx.on(window, 'mouseup', e => {
@@ -407,10 +420,18 @@ const setStatus = s => { $('#g-status').textContent = s; };
 /* ============================================================
    1 · typing sprint
    ============================================================ */
-const SENTENCE = 'The quick brown fox jumps over the lazy dog';
-const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Enter', 'Tab']);
-
+// Uses an in-page keyboard instead of the phone's own. Browsers report the system keyboard's key down
+// and up at the same instant (hold time 0 on iPhone); our own keys give real press and release times,
+// plus where on each key the finger landed, the same way on iOS and Android.
+const SENTENCE = 'the quick brown fox jumps over the lazy dog';
 const PRACTICE_SENTENCE = 'the lazy dog';
+const KB_ROWS = [
+  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+  ['_pad', 'z', 'x', 'c', 'v', 'b', 'n', 'm', 'bksp'],
+  ['space', 'done'],
+];
+const KEY_LABEL = { _pad: '', bksp: '⌫', space: 'space', done: 'done' };
 
 function runTyping(ctx) {
   const TARGET = ctx.practice ? PRACTICE_SENTENCE : SENTENCE;
@@ -419,106 +440,105 @@ function runTyping(ctx) {
     <div class="typing">
       <div class="label">type this</div>
       <p class="sentence" id="ty-s"></p>
-      <input id="ty-in" type="text" autocomplete="off" autocorrect="off" autocapitalize="none"
-             spellcheck="false" enterkeyhint="done" aria-label="type the sentence">
-      <div class="typing-foot"><span id="ty-n"></span><button class="link" id="ty-done" type="button">done</button></div>
-    </div>`;
-  const inp = $('#ty-in'), sEl = $('#ty-s'), nEl = $('#ty-n');
-  const log = [], tOpen = performance.now();
-  let blocked = 0, compositions = 0, keys = 0, finished = false;
+      <div class="label">you typed</div>
+      <p class="typed" id="ty-t"></p>
+      <div class="typing-foot" id="ty-n"></div>
+    </div>
+    <div class="kb" id="kb"><div class="kb-in">${KB_ROWS.map(row => `<div class="kb-row">${row.map(k =>
+      `<div class="key${k.length > 1 ? ` k-${k.replace('_', '')}` : ''}" data-k="${k}">${KEY_LABEL[k] ?? k}</div>`).join('')}</div>`).join('')}</div></div>`;
+  const kb = $('#kb'), sEl = $('#ty-s'), tEl = $('#ty-t'), nEl = $('#ty-n');
+  const kbBox = kb.getBoundingClientRect();
+  const keys = [...kb.querySelectorAll('.key')].filter(el => el.dataset.k !== '_pad').map(el => {
+    const b = el.getBoundingClientRect(), l = b.left - kbBox.left, t = b.top - kbBox.top;
+    return { id: el.dataset.k, el, l, t, r: l + b.width, b: t + b.height, cx: l + b.width / 2, cy: t + b.height / 2 };
+  });
+  const q = keys.find(k => k.id === 'q');
+  // nearest key by distance to its rectangle, so touches in the gaps still count, as on a phone keyboard
+  const keyAt = p => {
+    let best = null, bd = Infinity;
+    for (const k of keys) {
+      const dx = Math.max(k.l - p.x, 0, p.x - k.r), dy = Math.max(k.t - p.y, 0, p.y - k.b), d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = k; }
+    }
+    return bd <= 24 * 24 ? best : null;
+  };
+  const ks = [], live = new Map(), tOpen = performance.now();
+  let typed = '', offKey = 0, finished = false;
 
   const render = () => {
-    const v = inp.value;
     sEl.innerHTML = [...TARGET].map((ch, i) => {
-      const c = i < v.length ? (v[i].toLowerCase() === ch.toLowerCase() ? 'ok' : 'bad') : i === v.length ? 'cur' : '';
+      const c = i < typed.length ? (typed[i] === ch ? 'ok' : 'bad') : i === typed.length ? 'cur' : '';
       return `<span class="${c}">${ch}</span>`;
     }).join('');
-    nEl.textContent = `${v.length} / ${TARGET.length}`;
+    tEl.innerHTML = `${typed}<span class="caret"></span>`;   // typed only ever holds a–z and spaces
+    nEl.textContent = `${typed.length} / ${TARGET.length}`;
   };
-  const k = e => ({ key: e.key, code: e.code || '', kc: e.keyCode || 0 });
+  const press = id => {
+    if (id === 'bksp') typed = typed.slice(0, -1);
+    else typed += id === 'space' ? ' ' : id;
+    render();
+    if (norm(typed) === norm(TARGET)) ctx.after(250, finish);   // let the last release land
+  };
 
-  ctx.on(inp, 'keydown', e => {
-    log.push({ ev: 'down', t: evT(e), ...k(e), rep: !!e.repeat });
-    if (e.key === 'Enter') { e.preventDefault(); finish(); return; }
-    if (!e.repeat) setStatus(`${++keys} keys`);
+  bindPointer(ctx, kb, {
+    start(p, t, e) {
+      if (finished) return;
+      const k = keyAt(p);
+      if (!k) { offKey++; return; }
+      k.el.classList.add('down');
+      if (k.id === 'done') { live.set(p.id, { k }); return; }
+      const s = { key: k.id, d: t, u: null, dx: p.x - k.cx, dy: p.y - k.cy, down: e && e.touches ? e.touches.length : 1 };
+      ks.push(s);
+      live.set(p.id, { k, s });
+      setStatus(`${ks.length} keys`);
+      press(k.id);
+    },
+    end(p, t) {
+      const l = live.get(p.id);
+      if (!l) return;
+      live.delete(p.id);
+      l.k.el.classList.remove('down');
+      if (l.s) l.s.u = t;
+      else finish();                                            // the done key, on release
+    },
   });
-  ctx.on(inp, 'keyup', e => log.push({ ev: 'up', t: evT(e), ...k(e) }));
-  ctx.on(inp, 'beforeinput', e => {
-    if (/^insertFrom(Paste|Drop)/.test(e.inputType)) { e.preventDefault(); blocked++; return; }
-    log.push({ ev: 'in', t: evT(e), type: e.inputType, data: e.data });
-  });
-  ctx.on(inp, 'paste', e => { e.preventDefault(); blocked++; });
-  ctx.on(inp, 'compositionstart', () => compositions++);
-  ctx.on(inp, 'input', () => { render(); if (norm(inp.value) === norm(TARGET)) ctx.after(200, finish); });
-  ctx.on($('#ty-done'), 'click', () => finish());
-
   render();
   setStatus('ready');
-  inp.focus();
 
   function finish() {
     if (finished) return;
-    if (!log.some(e => e.ev === 'down' && e.key !== 'Enter')) { setStatus('type first'); inp.focus(); return; }
+    if (!ks.length) { setStatus('type first'); return; }
     finished = true;
-    inp.blur();
-    ctx.done(analyzeTyping(log, inp.value, { tOpen, blocked, compositions, target: TARGET }));
+    ctx.done(analyzeTyping(ks, typed, {
+      tOpen, offKey, target: TARGET, keyPx: { w: rnd(q.r - q.l), h: rnd(q.b - q.t) },
+    }));
   }
 }
 
-function analyzeTyping(log, typed, x) {
-  // Soft keyboards (esp. Android/Gboard) often report key "Unidentified" / keyCode 229,
-  // so identity falls back to the beforeinput event that follows each keydown.
-  const known = e => e.key && e.key !== 'Unidentified' && e.kc !== 229;
-  const ks = [], open = [];
-  let downs = 0, unidentified = 0, repeats = 0, orphanInputs = 0, orphanDeletes = 0;
-
-  for (const e of log) {
-    if (e.ev === 'down') {
-      if (MODIFIERS.has(e.key)) continue;
-      if (e.rep) { repeats++; continue; }
-      downs++;
-      if (!known(e)) unidentified++;
-      const s = { d: e.t, u: null, id: known(e) ? (e.code || e.key) : null, key: known(e) ? e.key : null, inType: null, data: null };
-      ks.push(s); open.push(s);
-    } else if (e.ev === 'up') {
-      if (MODIFIERS.has(e.key)) continue;
-      for (let i = open.length - 1; i >= 0; i--) if (e.t - open[i].d > 2000) open.splice(i, 1);   // lost keyups
-      const id = known(e) ? (e.code || e.key) : null;
-      let i = id ? open.findIndex(s => s.id === id) : -1;
-      if (i < 0) i = open.findIndex(s => s.id === null || id === null);
-      if (i >= 0) { open[i].u = e.t; open.splice(i, 1); }
-    } else {
-      const s = ks[ks.length - 1];
-      if (s && !s.inType && e.t >= s.d) { s.inType = e.type; s.data = e.data; }
-      else { orphanInputs++; if ((e.type || '').startsWith('delete')) orphanDeletes++; }
-    }
-  }
-
-  const isBack = s => s.key === 'Backspace' || (s.inType || '').startsWith('delete');
-  const char = s => isBack(s) ? '⌫' : s.key && s.key.length === 1 ? s.key : s.data ? s.data.slice(-1) : (s.key || '?');
-  const t0 = ks.length ? ks[0].d : 0;
+function analyzeTyping(ks, typed, x) {
+  const norm = s => s.toLowerCase().replace(/\s+/g, ' ').trim();
+  const isBack = s => s.key === 'bksp';
+  const char = s => (isBack(s) ? '⌫' : s.key === 'space' ? ' ' : s.key);
+  const t0 = ks[0].d;
 
   const holds = ks.filter(s => !isBack(s) && s.u != null).map(s => s.u - s.d);
   const flights = [], iki = [];
   for (let i = 1; i < ks.length; i++) {
     iki.push(ks[i].d - ks[i - 1].d);
-    if (ks[i - 1].u != null) flights.push(ks[i].d - ks[i - 1].u);
+    if (ks[i - 1].u != null) flights.push(ks[i].d - ks[i - 1].u);   // negative: next key pressed before the last was released
   }
-  const ikiMed = median(iki);
-  const hesThr = Math.max(500, (ikiMed || 0) * 2.5);
+  const hesThr = Math.max(500, (median(iki) || 0) * 2.5);
   const hes = iki.filter(v => v > hesThr);
 
-  const last = ks.length ? Math.max(...ks.map(s => s.u ?? s.d)) : 0;
-  const duration = last - t0;
-  const done = typed.toLowerCase().replace(/\s+/g, ' ').trim();
-  const target = x.target.toLowerCase();
+  const duration = Math.max(...ks.map(s => s.u ?? s.d)) - t0;
+  const done = norm(typed), target = norm(x.target);
   const errs = levenshtein(done, target);
-  const backspaces = ks.filter(isBack).length + orphanDeletes;
-  const paired = ks.filter(s => s.u != null).length;
-  const holdMed = median(holds);
+  const backspaces = ks.filter(isBack).length;
+  const chars = ks.filter(s => !isBack(s));
+  const released = ks.filter(s => s.u != null).length;
 
   return {
-    settings: { sentence: x.target, caseSensitive: false },
+    settings: { sentence: x.target, keyboard: 'in-page qwerty, lowercase', keyPx: x.keyPx, caseSensitive: false },
     metrics: {
       completed: errs === 0,
       typed,
@@ -527,29 +547,24 @@ function analyzeTyping(log, typed, x) {
       durationMs: rnd(duration),
       wpm: duration > 0 ? rnd(done.length / 5 / (duration / 60000)) : null,
       keystrokes: ks.length,
-      initiationLatencyMs: ks.length ? rnd(t0 - x.tOpen) : null,
+      initiationLatencyMs: rnd(t0 - x.tOpen),
       holdTimeMs: desc(holds),
-      flightTimeMs: desc(flights),
+      flightTimeMs: desc(flights, 1, false),
       interKeyIntervalMs: desc(iki),
       backspaces,
-      backspaceRate: ks.length ? rnd(backspaces / ks.length, 3) : null,
+      backspaceRate: rnd(backspaces / ks.length, 3),
       hesitations: { thresholdMs: rnd(hesThr), count: hes.length, longestMs: hes.length ? rnd(Math.max(...hes)) : null },
+      keyTouchOffsetPx: desc(chars.map(s => Math.hypot(s.dx, s.dy))),
+      systematicKeyOffsetPx: { dx: rnd(mean(chars.map(s => s.dx))), dy: rnd(mean(chars.map(s => s.dy))) },
+      overlappingPresses: ks.filter(s => s.down > 1).length,
     },
     quality: {
-      unidentifiedKeyRatio: downs ? rnd(unidentified / downs, 3) : null,
-      keyupPairedRatio: ks.length ? rnd(paired / ks.length, 3) : null,
-      // virtual keyboards often fire keydown/keyup together on release, making hold time ~0
-      holdTimesReliable: holdMed != null && holdMed >= 15 && paired / ks.length >= 0.8,
-      inputsWithoutKeydown: orphanInputs,
-      autoRepeats: repeats,
-      compositionEvents: x.compositions,
-      pasteBlocked: x.blocked,
+      releasesCaptured: rnd(released / ks.length, 3),
+      offKeyboardTouches: x.offKey,
     },
     raw: {
-      keystrokeColumns: ['char', 'tDownMs', 'holdMs'],
-      keystrokes: ks.map(s => [char(s), rnd(s.d - t0), s.u != null ? rnd(s.u - s.d) : null]),
-      eventColumns: ['event', 'tMs', 'key|inputType', 'keyCode|data'],
-      events: log.map(e => [e.ev, rnd(e.t - t0), e.ev === 'in' ? e.type : e.key, e.ev === 'in' ? e.data : e.kc]),
+      keystrokeColumns: ['key', 'tDownMs', 'holdMs', 'dxPx', 'dyPx', 'touchesDown'],
+      keystrokes: ks.map(s => [char(s), rnd(s.d - t0), s.u != null ? rnd(s.u - s.d) : null, rnd(s.dx), rnd(s.dy), s.down]),
     },
   };
 }
@@ -557,6 +572,8 @@ function analyzeTyping(log, typed, x) {
 /* ============================================================
    2 · two-pad speed tap
    ============================================================ */
+const SIMULTANEOUS_MS = 25;   // opposite-pad touches closer together than this = both fingers landing at once
+
 function runTap(ctx, hand) {
   const DURATION = ctx.practice ? 5000 : 10000;
   arena.innerHTML = `
@@ -585,18 +602,19 @@ function runTap(ctx, hand) {
     // short grace period so the last touchend (dwell time) lands
     ctx.after(200, () => {
       pads.forEach(p => p.el.classList.remove('down'));
-      ctx.done(analyzeTap(taps, offPad, hand, DURATION));
+      ctx.done(analyzeTap(taps, offPad, hand, DURATION, pads));
     });
   };
 
   bindPointer(ctx, arena, {
-    start(p, t) {
+    start(p, t, e) {
       if (over) return;
       const pad = hit(p);
       if (!pad) { if (t0 != null) offPad++; return; }
       if (t0 == null) { t0 = t; ctx.after(DURATION - (performance.now() - t0), end); tick(); }
       if (t - t0 > DURATION) return;
-      const tap = { t: t - t0, pad: pad.id, dx: p.x - pad.x, dy: p.y - pad.y, start: t, dwell: null };
+      // touchesDown > 1 means the other finger was still on the screen when this one landed
+      const tap = { t: t - t0, pad: pad.id, dx: p.x - pad.x, dy: p.y - pad.y, start: t, dwell: null, down: e && e.touches ? e.touches.length : 1 };
       taps.push(tap);
       live.set(p.id, { tap, pad });
       pad.el.classList.add('down');
@@ -612,28 +630,43 @@ function runTap(ctx, hand) {
   });
 }
 
-function analyzeTap(taps, offPad, hand, D) {
-  const ts = taps.map(x => x.t);
-  const iti = diffs(ts);
-  const itiAt = ts.slice(1).map(t => t / 1000);          // interval stamped at the tap that closes it
-  let alternations = 0;
-  for (let i = 1; i < taps.length; i++) if (taps[i].pad !== taps[i - 1].pad) alternations++;
-  const first = iti.filter((_, i) => ts[i + 1] < D / 2), second = iti.filter((_, i) => ts[i + 1] >= D / 2);
+// Rhythm is measured on clean left↔right intervals only. Same-pad repeats and near-simultaneous
+// touches are counted separately, because they would otherwise distort the interval statistics.
+function analyzeTap(taps, offPad, hand, D, pads) {
+  const n = taps.length, ts = taps.map(x => x.t);
+  const together = i => taps[i].pad !== taps[i - 1].pad && ts[i] - ts[i - 1] < SIMULTANEOUS_MS;
+  const inPair = new Array(n).fill(false);
+  for (let i = 1; i < n; i++) if (together(i)) inPair[i] = inPair[i - 1] = true;
+
+  let repeats = 0, pairs = 0;
+  const clean = [], cleanAt = [];
+  for (let i = 1; i < n; i++) {
+    if (taps[i].pad === taps[i - 1].pad) repeats++;
+    else if (together(i)) pairs++;
+    else if (!inPair[i] && !inPair[i - 1]) { clean.push(ts[i] - ts[i - 1]); cleanAt.push(ts[i] / 1000); }
+  }
+  const ratio = n > 1 ? clean.length / (n - 1) : null;
+  const first = clean.filter((_, i) => cleanAt[i] < D / 2000), second = clean.filter((_, i) => cleanAt[i] >= D / 2000);
   const m1 = mean(first), m2 = mean(second);
   const bins = Array.from({ length: D / 1000 }, (_, i) => ts.filter(t => t >= i * 1000 && t < (i + 1) * 1000).length);
 
   return {
-    settings: { hand, durationMs: D, alternating: true },
+    settings: {
+      hand, durationMs: D, alternating: true,
+      padDiameterPx: rnd(pads[0].r * 2), padCentreSeparationPx: rnd(Math.abs(pads[1].x - pads[0].x)),
+      simultaneousThresholdMs: SIMULTANEOUS_MS,
+    },
     metrics: {
-      taps: taps.length,
-      tapsPerSecond: rnd(taps.length / (D / 1000), 2),
+      taps: n,
+      tapsPerSecond: rnd(n / (D / 1000), 2),
       leftPadTaps: taps.filter(x => x.pad === 'L').length,
       rightPadTaps: taps.filter(x => x.pad === 'R').length,
-      alternationErrors: Math.max(0, taps.length - 1 - alternations),
       offPadTaps: offPad,
-      interTapIntervalMs: desc(iti),
+      alternation: { cleanIntervals: clean.length, sameSideRepeats: repeats, simultaneousPairs: pairs, cleanRatio: rnd(ratio, 3) },
+      interTapIntervalMs: desc(clean),                       // clean left↔right intervals only
+      allIntervalsMs: desc(diffs(ts)),
       fatigue: {
-        itiSlopeMsPerS: rnd(slope(itiAt, iti), 2),         // > 0: rhythm slowing over the window
+        itiSlopeMsPerS: rnd(slope(cleanAt, clean), 2),        // > 0: rhythm slowing over the window
         firstHalfMeanItiMs: rnd(m1),
         secondHalfMeanItiMs: rnd(m2),
         decrementPct: m1 && m2 ? rnd((m2 - m1) / m1 * 100) : null,
@@ -644,10 +677,14 @@ function analyzeTap(taps, offPad, hand, D) {
       dwellMs: desc(taps.map(x => x.dwell).filter(v => v != null)),
       distanceFromPadCentrePx: desc(taps.map(x => Math.hypot(x.dx, x.dy))),
     },
-    quality: { enoughTaps: taps.length >= 10 },
+    quality: {
+      enoughCleanIntervals: clean.length >= 10,
+      poorAlternation: ratio != null && ratio < 0.8,
+      tapsWithOtherFingerDown: taps.filter(x => x.down > 1).length,
+    },
     raw: {
-      tapColumns: ['tMs', 'pad', 'dxPx', 'dyPx', 'dwellMs'],
-      taps: taps.map(x => [rnd(x.t), x.pad, rnd(x.dx), rnd(x.dy), rnd(x.dwell)]),
+      tapColumns: ['tMs', 'pad', 'dxPx', 'dyPx', 'dwellMs', 'touchesDown'],
+      taps: taps.map(x => [rnd(x.t), x.pad, rnd(x.dx), rnd(x.dy), rnd(x.dwell), x.down]),
     },
   };
 }
@@ -1053,8 +1090,8 @@ function analyzeTrail(mode, labels, pos, correct, errors, taps, offTarget, revis
 const TASKS = {
   typing: {
     n: 1, name: 'typing sprint', domain: 'keystroke dynamics', run: runTyping,
-    intro: '<p>type the sentence at your normal pace. fix mistakes with backspace.</p><p>it ends when the sentence matches, or tap done.</p>',
-    measures: 'hold time, flight time, inter-key intervals, backspace rate, hesitations',
+    intro: '<p>type the sentence on the keyboard at the bottom of the screen, at your normal pace. fix mistakes with ⌫.</p><p>it ends when the sentence matches, or tap done.</p>',
+    measures: 'hold time, flight time, inter-key intervals, backspace rate, hesitations, where fingers land on keys',
     headline: m => [
       ['completed', m.completed ? 'yes' : `no · ${m.uncorrectedErrors} char errors`],
       ['time', secs(m.durationMs)],
@@ -1063,19 +1100,20 @@ const TASKS = {
       ['flight time, median', ms(m.flightTimeMs.median)],
       ['backspaces', `${m.backspaces} · ${pct(m.backspaceRate)} of keys`],
       ['hesitations', m.hesitations.count],
+      ['distance from key centre, median', m.keyTouchOffsetPx ? px(m.keyTouchOffsetPx.median) : '—'],
     ],
   },
   tap: {
     n: 2, name: 'two-pad tap', domain: 'bradykinesia · fatigue', run: runTap,
-    intro: '<p>rest the phone on a table. with the index and middle finger of one hand, tap left, right, left, right — as fast as you can.</p><p>10 seconds, timed from your first tap.</p>',
-    measures: 'inter-tap interval, rhythm variability, fatigue slope, touch dwell',
+    intro: '<p>rest the phone on a table. with the index and middle finger of one hand, tap left, right, left, right — as fast as you can.</p><p>lift each finger fully between taps. 10 seconds, timed from your first tap.</p>',
+    measures: 'inter-tap interval, rhythm variability, alternation, fatigue slope, touch dwell',
     modes: [['right', 'right hand'], ['left', 'left hand']],
     headline: m => [
       ['taps', `${m.taps} · ${m.tapsPerSecond}/s`],
+      ['clean alternation', `${pct(m.alternation.cleanRatio)} · ${m.alternation.sameSideRepeats} repeats, ${m.alternation.simultaneousPairs} together`],
       ['inter-tap interval', `${ms(m.interTapIntervalMs.mean)} · cv ${m.interTapIntervalMs.cv ?? '—'}`],
       ['fatigue slope', m.fatigue.itiSlopeMsPerS == null ? '—' : `${signed(m.fatigue.itiSlopeMsPerS)} ms/s`],
       ['first → second half', m.fatigue.decrementPct == null ? '—' : `${signed(m.fatigue.decrementPct)}%`],
-      ['alternation errors', m.alternationErrors],
       ['dwell, median', ms(m.dwellMs.median)],
     ],
   },
@@ -1298,7 +1336,7 @@ function showResult(res) {
 
 // Fill in once the Supabase project exists (setup steps are in supabase.sql).
 const STUDY = {
-  version: 'study-1',
+  version: 'study-2',                   // study-2: in-page keyboard, centred tap pads, clean-interval tap metrics
   consentVersion: 'consent-1',           // bump whenever the information page text changes
   researcher: 'Rishikesh Mistry',                 // shown on the information page
   contact: 'rishikesh.mistry@outlook.com',        // for questions and deletion requests
